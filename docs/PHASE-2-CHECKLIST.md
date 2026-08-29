@@ -1,0 +1,29 @@
+# Phase 2 Verification Checklist
+
+- [ ] pnpm install succeeds from clean checkout
+- [ ] all TypeScript workspaces typecheck
+- [ ] all TypeScript workspaces lint
+- [ ] all TypeScript workspaces build
+- [ ] cargo fmt --check passes
+- [ ] cargo check passes for every native crate
+- [ ] sync-core tests pass
+- [ ] duplicate replay is idempotent
+- [ ] payload tampering is rejected
+- [ ] sequence gaps are rejected
+- [ ] sequence reuse is rejected
+- [ ] retry/backoff is bounded
+- [ ] conflict state is persisted
+- [ ] authenticated Tauri sync commands work
+- [ ] offline queue survives application restart
+- [ ] reconnect drains queue without duplicates
+- [ ] cloud migration applies cleanly
+- [ ] cloud endpoint authenticates a provisioned device
+- [ ] cloud endpoint rejects invalid credentials
+- [ ] cloud endpoint rejects malformed batches
+- [ ] cloud endpoint rejects tampered payloads
+- [ ] cloud endpoint rejects sequence gaps
+- [ ] cloud replay is idempotent
+- [ ] backup completes
+- [ ] restore completes
+- [ ] restored queue resumes safely
+- [ ] CI executes real jobs and is green

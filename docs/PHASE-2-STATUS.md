@@ -1,0 +1,1 @@
+Phase 2 development branch target: offline-first transaction queue, cloud sync protocol, conflict handling, backups and verification. Current implementation is not declared production-complete until the checklist is executed against a dedicated MasterChef cloud environment.
