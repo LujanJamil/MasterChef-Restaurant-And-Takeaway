@@ -9,4 +9,6 @@ tauri-build = "2.6.1"
 [dependencies]
 tauri = { version = "2.11.5" }
 masterchef-native-core = { path = "../../../packages/native-core" }
+masterchef-sync-core = { path = "../../../packages/sync-core" }
+serde_json = "1"
 uuid = { version = "1", features = ["v4"] }
