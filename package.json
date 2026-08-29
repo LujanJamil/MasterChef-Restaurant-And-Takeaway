@@ -2,6 +2,17 @@
   "name": "masterchef-restaurant-system",
   "private": true,
   "packageManager": "pnpm@10.15.0",
-  "scripts": { "dev:ceo": "pnpm --filter @masterchef/ceo tauri dev", "dev:restaurant": "pnpm --filter @masterchef/restaurant tauri dev", "build": "pnpm -r build", "typecheck": "pnpm -r typecheck", "lint": "pnpm -r lint", "test": "pnpm -r test" },
-  "devDependencies": { "typescript": "^5.9.2" }
+  "scripts": {
+    "dev:ceo": "pnpm --filter @masterchef/ceo tauri dev",
+    "dev:restaurant": "pnpm --filter @masterchef/restaurant tauri dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "typescript": "^5.9.3"
+  }
 }

@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@masterchef/domain": ["../domain/src/index.ts"],
+      "@masterchef/domain/*": ["../domain/src/*"],
+      "@masterchef/permissions": ["../permissions/src/index.ts"],
+      "@masterchef/permissions/*": ["../permissions/src/*"]
+    }
+  },
+  "include": ["src/**/*"]
+}

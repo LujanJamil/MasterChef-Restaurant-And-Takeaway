@@ -5,11 +5,23 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
     "strict": true,
     "skipLibCheck": true,
     "noEmit": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "verbatimModuleSyntax": true
+    "verbatimModuleSyntax": true,
+    "baseUrl": ".",
+    "paths": {
+      "@masterchef/domain": ["packages/domain/src/index.ts"],
+      "@masterchef/domain/*": ["packages/domain/src/*"],
+      "@masterchef/permissions": ["packages/permissions/src/index.ts"],
+      "@masterchef/permissions/*": ["packages/permissions/src/*"],
+      "@masterchef/validation": ["packages/validation/src/index.ts"],
+      "@masterchef/validation/*": ["packages/validation/src/*"],
+      "@masterchef/audit": ["packages/audit/src/index.ts"],
+      "@masterchef/audit/*": ["packages/audit/src/*"]
+    }
   }
 }
