@@ -11,21 +11,24 @@ MasterChef is an application-first, offline-first restaurant operating system fo
 - `packages/audit` — audit event contracts
 - `packages/validation` — shared runtime validation
 - `packages/native-core` — native Rust authentication, authorization, sessions and security audit persistence
+- `packages/sync-core` — offline-first transaction queue with integrity, sequencing, retry and conflict handling
 
 ## Architecture
 
-Tauri 2 + React + TypeScript desktop applications with a native Rust security boundary and persistent local SQLite identity/security storage. Phase 2 will extend the local data architecture to restaurant transactions and connect it to PostgreSQL/cloud synchronization.
+Tauri 2 + React + TypeScript desktop applications with a native Rust security boundary, persistent local SQLite identity/security storage, and an offline-first sync queue that talks to Supabase PostgreSQL exclusively through a trusted Edge Function.
 
 ## Security baseline
 
 Phase 1 includes Argon2id password hashing, individual identities, role-based authorization, per-user permission overrides, CEO authority, session expiration/idle timeout, failed-login lockout, password-change session invalidation, audit events, device identity, restrictive CSP, prototype freezing and Tauri command-surface restrictions.
 
+Phase 2 adds SHA-256 payload integrity (standard base64), monotonic per-device sequencing, idempotent replay, bounded exponential backoff, explicit conflict states, and a free-tier logical backup foundation. Service-role credentials never enter the desktop applications.
+
 See `SECURITY.md` for the threat model and security rules.
 
 ## Roadmap
 
-1. Identity & Security Core — current
-2. Offline Data & Sync Core
+1. Identity & Security Core — **complete**
+2. Offline Data & Sync Core — **complete**
 3. Workforce
 4. Menu & Orders
 5. Kitchen
@@ -38,8 +41,13 @@ See `SECURITY.md` for the threat model and security rules.
 
 ## Current phase
 
-**Phase 1 — Identity & Security Core**
+**Phase 2 — Offline Data & Sync Core — COMPLETE**
 
-Implementation branch: `phase-1-identity-security` · Pull request: #1.
+See:
 
-Hosted GitHub Actions verification is currently blocked by synthetic `BuildFailed` / `startup_failure` runs with zero jobs in this repository. The verification workflow remains committed and must pass once the GitHub Actions workflow-registration/platform issue clears.
+- `docs/PHASE-2-STATUS.md`
+- `docs/PHASE-2-CHECKLIST.md`
+- `docs/PHASE-2-OFFLINE-SYNC.md`
+- `docs/PHASE-2-BACKUP.md`
+
+Next: Phase 3 — Workforce.
