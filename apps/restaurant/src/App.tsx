@@ -1,14 +1,16 @@
+import { useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { APP_NAME, LOCATION_NAME } from "@masterchef/domain";
-import { hasPermission } from "@masterchef/permissions";
 
-export default function App() {
-  const modules = [
-    ["Orders", "orders.create"], ["Kitchen", "orders.view"], ["Cashier", "cash.open"],
-    ["Store", "inventory.issue"], ["Attendance", "attendance.manage"], ["Delivery", "delivery.manage"]
-  ] as const;
-  return <main className="shell">
-    <header className="topbar"><div><strong>{APP_NAME} · Restaurant</strong><span>{LOCATION_NAME} · OFFLINE-FIRST</span></div><div className="pill">PHASE 1 FOUNDATION</div></header>
-    <section className="hero"><div><div className="eyebrow">RESTAURANT OPERATIONS APPLICATION</div><h1>Identity first.<br/>Operations next.</h1><p>Every worker will use an individual identity. Permissions will control sensitive actions while the CEO retains ultimate authority.</p></div></section>
-    <section className="grid">{modules.map(([name, permission]) => <article className="card" key={name}><h2>{name}</h2><p className="muted">Required capability: <code>{permission}</code></p><strong>{hasPermission({role: "MANAGER"}, permission) ? "MANAGER ACCESS" : "RESTRICTED"}</strong></article>)}</section>
-  </main>;
+type User = { id:string; username:string; display_name:string; role:string; status:string; created_at:number };
+type Session = { token:string; user:User; expires_at:number };
+
+export default function App(){
+  const [session,setSession]=useState<Session|null>(null); const [setup,setSetup]=useState(false); const [username,setUsername]=useState(""); const [displayName,setDisplayName]=useState(""); const [password,setPassword]=useState(""); const [error,setError]=useState(""); const [busy,setBusy]=useState(false);
+  async function login(){setBusy(true);setError("");try{const s=await invoke<Session>("login",{username,password});setSession(s);setPassword("")}catch{setError("Unable to sign in. Check your credentials or contact the CEO.")}finally{setBusy(false)}}
+  async function bootstrap(){setBusy(true);setError("");try{await invoke("bootstrap_ceo",{username,displayName,password});setSetup(false);setDisplayName("");setPassword("");setError("Initial local administrator created. Sign in to continue.")}catch(e){setError(String(e).includes("unauthorized")?"This device has already been initialized.":String(e))}finally{setBusy(false)}}
+  async function logout(){if(!session)return;try{await invoke("logout",{token:session.token})}finally{setSession(null)}}
+  if(!session)return <main className="auth"><section className="card login"><div className="logo">M</div><div className="eyebrow">MASTER CHEF · RESTAURANT APPLICATION</div><h1>{setup?"Initialize this device":"Sign in"}</h1><p>{LOCATION_NAME} · 24/7 operations</p>{setup&&<><label>Administrator name<input value={displayName} onChange={e=>setDisplayName(e.target.value)}/></label></>}<label>Username<input value={username} onChange={e=>setUsername(e.target.value)} autoComplete="username"/></label><label>Password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} autoComplete={setup?"new-password":"current-password"}/></label><button disabled={busy} onClick={()=>void(setup?bootstrap():login())}>{busy?"Please wait…":setup?"Initialize securely":"Sign in"}</button><button className="link" onClick={()=>{setSetup(!setup);setError("")}}>{setup?"Back to sign in":"First launch? Initialize device"}</button>{error&&<div className="error">{error}</div>}<small>Authentication is enforced by the native security core. Sessions are held in memory and critical identity events are audited.</small></section></main>;
+  const modules=["Orders","Kitchen","Cashier","Store","Attendance","Delivery"];
+  return <main className="app"><header><div><b>{APP_NAME} · Restaurant</b><span>{LOCATION_NAME}</span></div><div><span className="secure">● SECURE SESSION</span><button className="secondary" onClick={()=>void logout()}>Sign out</button></div></header><section className="hero"><div><div className="eyebrow">RESTAURANT OPERATIONS APPLICATION</div><h1>Operations are protected.</h1><p>Signed in as <b>{session.user.display_name}</b> · {session.user.role}</p></div><div className="badge">OFFLINE-FIRST<br/><b>SECURITY CORE ACTIVE</b></div></section><section className="grid">{modules.map(m=><article className="card" key={m}><span className="eyebrow">MODULE</span><h2>{m}</h2><p>Access is evaluated against the authenticated worker identity before sensitive actions are executed.</p><span className="pill">IDENTITY REQUIRED</span></article>)}</section><footer>MasterChef · Najjera II Central Market</footer></main>;
 }

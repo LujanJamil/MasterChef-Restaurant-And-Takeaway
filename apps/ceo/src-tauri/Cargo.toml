@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [build-dependencies]
-tauri-build = "2.8.0"
+tauri-build = "2.6.1"
 
 [dependencies]
-tauri = { version = "2.8.0" }
+tauri = { version = "2.11.5" }
 masterchef-native-core = { path = "../../../packages/native-core" }
 uuid = { version = "1", features = ["v4"] }

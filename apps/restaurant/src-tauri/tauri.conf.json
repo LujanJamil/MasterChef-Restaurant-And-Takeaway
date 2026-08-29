@@ -1,9 +1,9 @@
 {
-  "$schema": "https://schema.tauri.app/config/2",
-  "productName": "MasterChef Restaurant",
-  "version": "0.1.0",
-  "identifier": "ug.masterchef.restaurant",
-  "build": { "beforeDevCommand": "pnpm dev", "devUrl": "http://localhost:1421", "beforeBuildCommand": "pnpm build", "frontendDist": "../dist" },
-  "app": { "windows": [{ "title": "MasterChef Restaurant", "width": 1280, "height": 800, "minWidth": 1024, "minHeight": 680, "resizable": true }], "security": { "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' http://localhost:1421; style-src 'self' 'unsafe-inline'" } },
-  "bundle": { "active": true, "targets": "all", "category": "Business", "shortDescription": "MasterChef restaurant operations application" }
+  "$schema":"https://schema.tauri.app/config/2",
+  "productName":"MasterChef Restaurant",
+  "version":"0.1.0",
+  "identifier":"ug.masterchef.restaurant",
+  "build":{"beforeDevCommand":"pnpm dev","devUrl":"http://localhost:1421","beforeBuildCommand":"pnpm build","frontendDist":"../dist"},
+  "app":{"windows":[{"label":"main","title":"MasterChef Restaurant","width":1280,"height":800,"minWidth":1024,"minHeight":680,"resizable":true}],"security":{"csp":"default-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://localhost:1421; img-src 'self' asset: data:; style-src 'self' 'unsafe-inline'; script-src 'self'","freezePrototype":true,"dangerousDisableAssetCspModification":false}},
+  "bundle":{"active":true,"targets":"all","category":"Business","shortDescription":"MasterChef restaurant operations application"}
 }
