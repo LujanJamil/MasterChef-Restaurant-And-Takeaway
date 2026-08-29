@@ -6,101 +6,22 @@ type UserStatus = "ACTIVE" | "SUSPENDED" | "INACTIVE";
 type User = { id:string; username:string; display_name:string; role:WorkerRole; status:UserStatus; created_at:number };
 type Session = { token:string; user:User; expires_at:number };
 type Audit = { id:string; actor_user_id:string|null; action:string; target_type:string|null; target_id:string|null; details:Record<string,unknown>; device_id:string; created_at:number };
-
 const roleLabels: Record<WorkerRole,string> = { CEO:"CEO", MANAGER:"Manager", WAITER:"Waiter", COOK:"Cook", CASHIER:"Cashier", STOREKEEPER:"Storekeeper", DELIVERY_RIDER:"Delivery Rider" };
 const genericLoginError = "Unable to sign in. Check your credentials or contact the CEO.";
-
 function formatTime(value:number) { return new Date(value*1000).toLocaleString(); }
 
 export default function App() {
-  const [session,setSession] = useState<Session|null>(null);
-  const [setup,setSetup] = useState(false);
-  const [username,setUsername] = useState(""); const [password,setPassword] = useState("");
-  const [displayName,setDisplayName] = useState(""); const [error,setError] = useState(""); const [busy,setBusy] = useState(false);
-  const [users,setUsers] = useState<User[]>([]); const [audits,setAudits] = useState<Audit[]>([]);
-  const [newUser,setNewUser] = useState({username:"",displayName:"",role:"WAITER" as WorkerRole,password:""});
-
-  const authenticated = Boolean(session);
-  const isCEO = session?.user.role === "CEO";
-
-  async function signIn() {
-    setError(""); setBusy(true);
-    try { const result = await invoke<Session>("login",{username,password}); setSession(result); setPassword(""); }
-    catch { setError(genericLoginError); }
-    finally { setBusy(false); }
-  }
-
-  async function bootstrap() {
-    setError(""); setBusy(true);
-    try { await invoke<User>("bootstrap_ceo",{username,displayName,password}); setSetup(false); setDisplayName(""); setPassword(""); setError("CEO account created. Sign in with the new credentials."); }
-    catch (e) { setError(String(e).includes("unauthorized") ? "CEO setup has already been completed on this device." : String(e)); }
-    finally { setBusy(false); }
-  }
-
-  async function signOut() { if (!session) return; try { await invoke("logout",{token:session.token}); } finally { setSession(null); setUsers([]); setAudits([]); } }
-
-  async function refresh() {
-    if (!session) return;
-    try {
-      const [u,a] = await Promise.all([invoke<User[]>("list_users",{token:session.token}),invoke<Audit[]>("audit_events",{token:session.token,limit:100})]);
-      setUsers(u); setAudits(a);
-    } catch (e) { if (String(e).toLowerCase().includes("unauthorized")) setSession(null); }
-  }
-  useEffect(()=>{ if(session) void refresh(); },[session]);
-
-  async function createWorker() {
-    if (!session) return; setError(""); setBusy(true);
-    try { await invoke("create_user",{token:session.token,username:newUser.username,displayName:newUser.displayName,role:newUser.role,password:newUser.password}); setNewUser({username:"",displayName:"",role:"WAITER",password:""}); await refresh(); }
-    catch(e) { setError(String(e)); }
-    finally { setBusy(false); }
-  }
-
-  async function toggleUser(user:User) {
-    if (!session || user.id === session.user.id) return;
-    setError("");
-    try { await invoke("set_user_status",{token:session.token,userId:user.id,status:user.status === "ACTIVE" ? "SUSPENDED" : "ACTIVE"}); await refresh(); }
-    catch(e) { setError(String(e)); }
-  }
-
-  const activeCount = useMemo(()=>users.filter(u=>u.status === "ACTIVE").length,[users]);
-
-  if (!authenticated) return (
-    <main className="auth-shell">
-      <section className="auth-panel">
-        <div className="brand-mark">M</div><div className="eyebrow">MASTER CHEF · CEO APPLICATION</div>
-        <h1>{setup ? "Create the CEO account" : "Secure sign in"}</h1>
-        <p className="muted">{LOCATION_NAME}</p>
-        {setup ? <>
-          <p className="helper">This is a one-time local bootstrap. The CEO account is created inside the encrypted-by-permissions application boundary and cannot be created again after initialization.</p>
-          <label>CEO name<input value={displayName} onChange={e=>setDisplayName(e.target.value)} autoComplete="name" /></label>
-          <label>Username<input value={username} onChange={e=>setUsername(e.target.value)} autoComplete="username" /></label>
-          <label>Password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} autoComplete="new-password" /></label>
-          <button disabled={busy} onClick={bootstrap}>{busy ? "Creating…" : "Create CEO account"}</button>
-          <button className="link-button" onClick={()=>{setSetup(false);setError("")}}>Back to sign in</button>
-        </> : <>
-          <label>Username<input value={username} onChange={e=>setUsername(e.target.value)} autoComplete="username" onKeyDown={e=>{if(e.key==="Enter") void signIn()}} /></label>
-          <label>Password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} autoComplete="current-password" onKeyDown={e=>{if(e.key==="Enter") void signIn()}} /></label>
-          <button disabled={busy} onClick={signIn}>{busy ? "Signing in…" : "Sign in"}</button>
-          <button className="link-button" onClick={()=>{setSetup(true);setError("")}}>First launch? Set up CEO</button>
-        </>}
-        {error && <div className="error" role="alert">{error}</div>}
-        <div className="security-note">Passwords are never stored in the UI. Authentication is handled by the native Rust security core using Argon2id password hashing, short-lived in-memory sessions and audited security events.</div>
-      </section>
-    </main>
-  );
-
-  return <main className="app-shell">
-    <header className="topbar"><div><div className="eyebrow">MASTER CHEF</div><strong>CEO COMMAND CENTER</strong><span>{LOCATION_NAME}</span></div><div className="top-actions"><span className="status-dot">SECURE SESSION</span><button className="secondary" onClick={()=>void signOut()}>Sign out</button></div></header>
-    <section className="hero"><div><div className="eyebrow">PHASE 1 · IDENTITY & SECURITY CORE</div><h1>Good to see you, {session.user.display_name}.</h1><p>Identity, authorization and accountability are now enforced below the interface.</p></div><div className="hero-badge"><b>{session.user.role === "CEO" ? "CEO" : roleLabels[session.user.role]}</b><span>AUTHENTICATED</span></div></section>
-    {error && <div className="error app-error">{error}</div>}
-    <section className="metrics"><article><span>Active identities</span><b>{activeCount}</b></article><article><span>Registered identities</span><b>{users.length}</b></article><article><span>Audit events loaded</span><b>{audits.length}</b></article><article><span>Restaurant</span><b>Najjera II</b></article></section>
-    {isCEO && <section className="panel"><div className="panel-head"><div><h2>Worker identity management</h2><p>Every worker will have an individual account. CEO authority is always audited.</p></div></div>
-      <div className="form-grid"><input placeholder="Username" value={newUser.username} onChange={e=>setNewUser({...newUser,username:e.target.value})}/><input placeholder="Display name" value={newUser.displayName} onChange={e=>setNewUser({...newUser,displayName:e.target.value})}/><select value={newUser.role} onChange={e=>setNewUser({...newUser,role:e.target.value as WorkerRole})}>{DEFAULT_ROLES.filter(r=>r!=="CEO").map(r=><option key={r} value={r}>{roleLabels[r]}</option>)}</select><input type="password" placeholder="Temporary password" value={newUser.password} onChange={e=>setNewUser({...newUser,password:e.target.value})}/><button disabled={busy} onClick={()=>void createWorker()}>Create worker</button></div>
-      <div className="table-wrap"><table><thead><tr><th>Worker</th><th>Username</th><th>Role</th><th>Status</th><th>Created</th><th></th></tr></thead><tbody>{users.map(u=><tr key={u.id}><td>{u.display_name}</td><td>{u.username}</td><td>{roleLabels[u.role]}</td><td><span className={`state ${u.status.toLowerCase()}`}>{u.status}</span></td><td>{formatTime(u.created_at)}</td><td>{u.id !== session.user.id && <button className="small" onClick={()=>void toggleUser(u)}>{u.status === "ACTIVE" ? "Suspend" : "Activate"}</button>}</td></tr>)}</tbody></table></div>
-    </section>}
-    <section className="panel"><div className="panel-head"><div><h2>Security audit trail</h2><p>Authentication and identity changes are recorded with actor, device and timestamp.</p></div><button className="secondary" onClick={()=>void refresh()}>Refresh</button></div>
-      <div className="audit-list">{audits.map(a=><div className="audit-row" key={a.id}><div><b>{a.action}</b><span>{a.target_type ?? "SYSTEM"}{a.target_id ? ` · ${a.target_id.slice(0,8)}` : ""}</span></div><time>{formatTime(a.created_at)}</time></div>)}{audits.length===0&&<div className="empty">No audit events available.</div>}</div>
-    </section>
-    <footer>MasterChef · Master Restaurant with Master Chefs · {LOCATION_NAME} · Security Core v1</footer>
-  </main>;
+  const [session,setSession] = useState<Session|null>(null); const [setup,setSetup] = useState(false); const [username,setUsername] = useState(""); const [password,setPassword] = useState("");
+  const [displayName,setDisplayName] = useState(""); const [error,setError] = useState(""); const [busy,setBusy] = useState(false); const [users,setUsers] = useState<User[]>([]); const [audits,setAudits] = useState<Audit[]>([]);
+  const [newUser,setNewUser] = useState({username:"",displayName:"",role:"WAITER" as WorkerRole,password:""}); const isCEO = session?.user.role === "CEO";
+  async function signIn(){setError("");setBusy(true);try{const result=await invoke<Session>("login",{username,password});setSession(result);setPassword("")}catch{setError(genericLoginError)}finally{setBusy(false)}}
+  async function bootstrap(){setError("");setBusy(true);try{await invoke<User>("bootstrap_ceo",{username,displayName,password});setSetup(false);setDisplayName("");setPassword("");setError("CEO account created. Sign in with the new credentials.")}catch(e){setError(String(e).includes("authorized")?"CEO setup has already been completed on this device.":String(e))}finally{setBusy(false)}}
+  async function signOut(){if(!session)return;try{await invoke("logout",{token:session.token})}finally{setSession(null);setUsers([]);setAudits([])}}
+  async function refresh(){if(!session)return;try{const [u,a]=await Promise.all([invoke<User[]>("list_users",{token:session.token}),invoke<Audit[]>("audit_events",{token:session.token,limit:100})]);setUsers(u);setAudits(a)}catch(e){if(String(e).toLowerCase().includes("authorized"))setSession(null)}}
+  useEffect(()=>{if(session)void refresh()},[session]);
+  async function createWorker(){if(!session)return;setError("");setBusy(true);try{await invoke("create_user",{token:session.token,username:newUser.username,displayName:newUser.displayName,role:newUser.role,password:newUser.password});setNewUser({username:"",displayName:"",role:"WAITER",password:""});await refresh()}catch(e){setError(String(e))}finally{setBusy(false)}}
+  async function toggleUser(user:User){if(!session||user.id===session.user.id)return;setError("");try{await invoke("set_user_status",{token:session.token,userId:user.id,status:user.status==="ACTIVE"?"SUSPENDED":"ACTIVE"});await refresh()}catch(e){setError(String(e))}}
+  const activeCount=useMemo(()=>users.filter(u=>u.status==="ACTIVE").length,[users]);
+  if(!session)return <main className="auth-shell"><section className="auth-panel"><div className="brand-mark">M</div><div className="eyebrow">{APP_NAME.toUpperCase()} · CEO APPLICATION</div><h1>{setup?"Create the CEO account":"Secure sign in"}</h1><p className="muted">{LOCATION_NAME}</p>{setup?<><p className="helper">This is a one-time local bootstrap. The CEO account is created in the native security core and cannot be created again after initialization.</p><label>CEO name<input value={displayName} onChange={e=>setDisplayName(e.target.value)} autoComplete="name"/></label><label>Username<input value={username} onChange={e=>setUsername(e.target.value)} autoComplete="username"/></label><label>Password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} autoComplete="new-password"/></label><button disabled={busy} onClick={()=>void bootstrap()}>{busy?"Creating…":"Create CEO account"}</button><button className="link-button" onClick={()=>{setSetup(false);setError("")}}>Back to sign in</button></>:<><label>Username<input value={username} onChange={e=>setUsername(e.target.value)} autoComplete="username" onKeyDown={e=>{if(e.key==="Enter")void signIn()}}/></label><label>Password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} autoComplete="current-password" onKeyDown={e=>{if(e.key==="Enter")void signIn()}}/></label><button disabled={busy} onClick={()=>void signIn()}>{busy?"Signing in…":"Sign in"}</button><button className="link-button" onClick={()=>{setSetup(true);setError("")}}>First launch? Set up CEO</button></>}{error&&<div className="error" role="alert">{error}</div>}<div className="security-note">Passwords are never stored in the UI. Authentication is handled by the native Rust security core using Argon2id password hashing, short-lived in-memory sessions and audited security events.</div></section></main>;
+  return <main className="app-shell"><header className="topbar"><div><div className="eyebrow">{APP_NAME.toUpperCase()}</div><strong>CEO COMMAND CENTER</strong><span>{LOCATION_NAME}</span></div><div className="top-actions"><span className="status-dot">SECURE SESSION</span><button className="secondary" onClick={()=>void signOut()}>Sign out</button></div></header><section className="hero"><div><div className="eyebrow">PHASE 1 · IDENTITY & SECURITY CORE</div><h1>Good to see you, {session.user.display_name}.</h1><p>Identity, authorization and accountability are enforced below the interface.</p></div><div className="hero-badge"><b>{isCEO?"CEO":roleLabels[session.user.role]}</b><span>AUTHENTICATED</span></div></section>{error&&<div className="error app-error">{error}</div>}<section className="metrics"><article><span>Active identities</span><b>{activeCount}</b></article><article><span>Registered identities</span><b>{users.length}</b></article><article><span>Audit events loaded</span><b>{audits.length}</b></article><article><span>Restaurant</span><b>Najjera II</b></article></section>{isCEO&&<section className="panel"><div className="panel-head"><div><h2>Worker identity management</h2><p>Every worker has an individual account. CEO authority is always audited.</p></div></div><div className="form-grid"><input placeholder="Username" value={newUser.username} onChange={e=>setNewUser({...newUser,username:e.target.value})}/><input placeholder="Display name" value={newUser.displayName} onChange={e=>setNewUser({...newUser,displayName:e.target.value})}/><select value={newUser.role} onChange={e=>setNewUser({...newUser,role:e.target.value as WorkerRole})}>{DEFAULT_ROLES.filter(r=>r!=="CEO").map(r=><option key={r} value={r}>{roleLabels[r]}</option>)}</select><input type="password" placeholder="Temporary password" value={newUser.password} onChange={e=>setNewUser({...newUser,password:e.target.value})}/><button disabled={busy} onClick={()=>void createWorker()}>Create worker</button></div><div className="table-wrap"><table><thead><tr><th>Worker</th><th>Username</th><th>Role</th><th>Status</th><th>Created</th><th></th></tr></thead><tbody>{users.map(u=><tr key={u.id}><td>{u.display_name}</td><td>{u.username}</td><td>{roleLabels[u.role]}</td><td><span className={`state ${u.status.toLowerCase()}`}>{u.status}</span></td><td>{formatTime(u.created_at)}</td><td>{u.id!==session.user.id&&<button className="small" onClick={()=>void toggleUser(u)}>{u.status==="ACTIVE"?"Suspend":"Activate"}</button>}</td></tr>)}</tbody></table></div></section>}<section className="panel"><div className="panel-head"><div><h2>Security audit trail</h2><p>Authentication and identity changes are recorded with actor, device and timestamp.</p></div><button className="secondary" onClick={()=>void refresh()}>Refresh</button></div><div className="audit-list">{audits.map(a=><div className="audit-row" key={a.id}><div><b>{a.action}</b><span>{a.target_type??"SYSTEM"}{a.target_id?` · ${a.target_id.slice(0,8)}`:""}</span></div><time>{formatTime(a.created_at)}</time></div>)}{audits.length===0&&<div className="empty">No audit events available.</div>}</div></section><footer>{APP_NAME} · {LOCATION_NAME} · Security Core v1</footer></main>;
 }
