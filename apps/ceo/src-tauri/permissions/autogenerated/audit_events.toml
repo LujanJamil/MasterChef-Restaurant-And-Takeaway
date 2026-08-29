@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-audit-events"
+description = "Enables the audit_events command without any pre-configured scope."
+commands.allow = ["audit_events"]
+
+[[permission]]
+identifier = "deny-audit-events"
+description = "Denies the audit_events command without any pre-configured scope."
+commands.deny = ["audit_events"]

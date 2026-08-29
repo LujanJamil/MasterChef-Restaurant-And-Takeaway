@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-set-user-status"
+description = "Enables the set_user_status command without any pre-configured scope."
+commands.allow = ["set_user_status"]
+
+[[permission]]
+identifier = "deny-set-user-status"
+description = "Denies the set_user_status command without any pre-configured scope."
+commands.deny = ["set_user_status"]

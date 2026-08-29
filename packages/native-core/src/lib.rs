@@ -731,7 +731,7 @@ fn validate_username(v: &str) -> Result<(), AuthError> {
     let s = v.trim();
     if
         !(3..=32).contains(&s.len()) ||
-        !s.chars().all(|c| (c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-')))
+        !s.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
     {
         return Err(
             AuthError::Validation(
@@ -786,7 +786,7 @@ fn validate_permission(v: &str) -> Result<(), AuthError> {
     if
         v.len() >= 3 &&
         v.len() <= 80 &&
-        v.chars().all(|c| (c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-')))
+        v.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
     {
         Ok(())
     } else {

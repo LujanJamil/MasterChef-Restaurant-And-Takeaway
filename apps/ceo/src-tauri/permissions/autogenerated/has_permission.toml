@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-has-permission"
+description = "Enables the has_permission command without any pre-configured scope."
+commands.allow = ["has_permission"]
+
+[[permission]]
+identifier = "deny-has-permission"
+description = "Denies the has_permission command without any pre-configured scope."
+commands.deny = ["has_permission"]

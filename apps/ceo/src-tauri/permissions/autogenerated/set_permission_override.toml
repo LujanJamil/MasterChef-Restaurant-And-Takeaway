@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-set-permission-override"
+description = "Enables the set_permission_override command without any pre-configured scope."
+commands.allow = ["set_permission_override"]
+
+[[permission]]
+identifier = "deny-set-permission-override"
+description = "Denies the set_permission_override command without any pre-configured scope."
+commands.deny = ["set_permission_override"]
