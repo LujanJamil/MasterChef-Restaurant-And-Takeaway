@@ -1,0 +1,7 @@
+{
+  "name": "masterchef-restaurant-system",
+  "private": true,
+  "packageManager": "pnpm@10.15.0",
+  "scripts": { "dev:ceo": "pnpm --filter @masterchef/ceo tauri dev", "dev:restaurant": "pnpm --filter @masterchef/restaurant tauri dev", "build": "pnpm -r build", "typecheck": "pnpm -r typecheck", "lint": "pnpm -r lint", "test": "pnpm -r test" },
+  "devDependencies": { "typescript": "^5.9.2" }
+}
