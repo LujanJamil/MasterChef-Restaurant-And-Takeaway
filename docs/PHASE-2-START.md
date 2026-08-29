@@ -1,0 +1,1 @@
+Phase 2 development starts from the verified Phase 1 security foundation. All Phase 2 work is subject to the same security and verification gates.
