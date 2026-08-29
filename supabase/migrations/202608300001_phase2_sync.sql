@@ -10,6 +10,13 @@ create table if not exists public.sync_devices (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.sync_device_credentials (
+  device_id uuid primary key references public.sync_devices(device_id) on delete cascade,
+  token_hash text not null,
+  created_at timestamptz not null default now(),
+  rotated_at timestamptz
+);
+
 create table if not exists public.sync_operations (
   id uuid primary key,
   device_id uuid not null references public.sync_devices(device_id),
@@ -61,13 +68,14 @@ create table if not exists public.sync_audit (
 );
 
 alter table public.sync_devices enable row level security;
+alter table public.sync_device_credentials enable row level security;
 alter table public.sync_operations enable row level security;
 alter table public.sync_cursors enable row level security;
 alter table public.sync_conflicts enable row level security;
 alter table public.sync_audit enable row level security;
 
--- No direct client policies are granted here. The sync Edge Function is the trusted boundary.
--- Service-role access is server-side only and must never be shipped inside either desktop application.
+-- No direct client policies are granted. The Edge Function is the trusted boundary.
+-- The service-role key is server-only and must never ship in a desktop application.
 
 create or replace function public.record_sync_operation(
   p_id uuid,
