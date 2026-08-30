@@ -5,7 +5,7 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "scripts": {"build":"tsc -p tsconfig.json","typecheck":"tsc --noEmit -p tsconfig.json","lint":"tsc --noEmit -p tsconfig.json","test":"tsc --noEmit -p tsconfig.json"},
+  "scripts": {"build":"tsc -p tsconfig.json","typecheck":"tsc --noEmit -p tsconfig.json","lint":"tsc --noEmit -p tsconfig.json","test":"tsc -p tsconfig.json && node --test tests/*.mjs"},
   "dependencies": {"@masterchef/domain":"workspace:*"},
   "devDependencies": {"typescript":"^5.9.2"}
 }
