@@ -1,316 +1,40 @@
-import { useEffect, useState } from "react";
+import { useEffect,useMemo,useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { APP_NAME, LOCATION_NAME } from "@masterchef/domain";
+import { APP_NAME,LOCATION_NAME } from "@masterchef/domain";
 
-type User = { id: string; username: string; display_name: string; role: string; status: string; created_at: number };
-type Session = { token: string; user: User; expires_at: number };
-type Attendance = {
-  id: string;
-  worker_id: string;
-  device_id: string;
-  clock_in_at: number;
-  clock_out_at: number | null;
-  break_minutes: number;
-  status: string;
-  notes?: string | null;
-};
-
-function fmt(ts: number) {
-  return new Date(ts * 1000).toLocaleString();
-}
-
-export default function App() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [setup, setSetup] = useState(false);
-  const [username, setUsername] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [panel, setPanel] = useState<"home" | "attendance">("home");
-  const [openAtt, setOpenAtt] = useState<Attendance | null>(null);
-  const [history, setHistory] = useState<Attendance[]>([]);
-  const [breakMin, setBreakMin] = useState(0);
-  const [notes, setNotes] = useState("");
-
-  async function login() {
-    setBusy(true);
-    setError("");
-    try {
-      const s = await invoke<Session>("login", { username, password });
-      setSession(s);
-      setPassword("");
-    } catch {
-      setError("Unable to sign in. Check your credentials or contact the CEO.");
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function bootstrap() {
-    setBusy(true);
-    setError("");
-    try {
-      await invoke("bootstrap_ceo", { username, displayName, password });
-      setSetup(false);
-      setDisplayName("");
-      setPassword("");
-      setError("Initial local administrator created. Sign in to continue.");
-    } catch (e) {
-      setError(String(e).includes("unauthorized") ? "This device has already been initialized." : String(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function logout() {
-    if (!session) return;
-    try {
-      await invoke("logout", { token: session.token });
-    } finally {
-      setSession(null);
-      setPanel("home");
-    }
-  }
-
-  async function refreshAttendance() {
-    if (!session) return;
-    try {
-      const open = await invoke<Attendance | null>("workforce_open_attendance", { token: session.token });
-      setOpenAtt(open);
-      const list = await invoke<Attendance[]>("workforce_list_attendance", { token: session.token, limit: 20 });
-      setHistory(list);
-    } catch (e) {
-      setError(String(e));
-    }
-  }
-
-  useEffect(() => {
-    if (session && panel === "attendance") void refreshAttendance();
-  }, [session, panel]);
-
-  async function clockIn() {
-    if (!session) return;
-    setBusy(true);
-    setError("");
-    try {
-      await invoke("workforce_clock_in", { token: session.token, notes: notes || null });
-      setNotes("");
-      await refreshAttendance();
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function clockOut() {
-    if (!session) return;
-    setBusy(true);
-    setError("");
-    try {
-      await invoke("workforce_clock_out", {
-        token: session.token,
-        breakMinutes: breakMin,
-        notes: notes || null,
-      });
-      setNotes("");
-      setBreakMin(0);
-      await refreshAttendance();
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  if (!session)
-    return (
-      <main className="auth">
-        <section className="card login">
-          <div className="logo">M</div>
-          <div className="eyebrow">MASTER CHEF · RESTAURANT APPLICATION</div>
-          <h1>{setup ? "Initialize this device" : "Sign in"}</h1>
-          <p>{LOCATION_NAME} · 24/7 operations</p>
-          {setup && (
-            <>
-              <label>
-                Administrator name
-                <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-              </label>
-            </>
-          )}
-          <label>
-            Username
-            <input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" />
-          </label>
-          <label>
-            Password
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete={setup ? "new-password" : "current-password"}
-            />
-          </label>
-          <button disabled={busy} onClick={() => void (setup ? bootstrap() : login())}>
-            {busy ? "Please wait…" : setup ? "Initialize securely" : "Sign in"}
-          </button>
-          <button
-            className="link"
-            onClick={() => {
-              setSetup(!setup);
-              setError("");
-            }}
-          >
-            {setup ? "Back to sign in" : "First launch? Initialize device"}
-          </button>
-          {error && <div className="error">{error}</div>}
-          <small>
-            Authentication is enforced by the native security core. Sessions are held in memory and critical identity
-            events are audited.
-          </small>
-        </section>
-      </main>
-    );
-
-  if (panel === "attendance") {
-    return (
-      <main className="app">
-        <header>
-          <div>
-            <b>{APP_NAME} · Attendance</b>
-            <span>{LOCATION_NAME}</span>
-          </div>
-          <div>
-            <button className="secondary" onClick={() => setPanel("home")}>
-              Back
-            </button>
-            <button className="secondary" onClick={() => void logout()}>
-              Sign out
-            </button>
-          </div>
-        </header>
-        <section className="hero">
-          <div>
-            <div className="eyebrow">WORKFORCE · PHASE 3</div>
-            <h1>Attendance</h1>
-            <p>
-              Signed in as <b>{session.user.display_name}</b> · {session.user.role}
-            </p>
-          </div>
-          <div className="badge">
-            {openAtt ? "CLOCKED IN" : "NOT CLOCKED IN"}
-            <br />
-            <b>{openAtt ? fmt(openAtt.clock_in_at) : "—"}</b>
-          </div>
-        </section>
-        <section className="card" style={{ margin: "1rem", padding: "1.25rem" }}>
-          {openAtt ? (
-            <>
-              <p>You are currently clocked in. Enter break minutes (if any) and clock out.</p>
-              <label>
-                Break minutes
-                <input
-                  type="number"
-                  min={0}
-                  value={breakMin}
-                  onChange={(e) => setBreakMin(Number(e.target.value) || 0)}
-                />
-              </label>
-              <label>
-                Notes
-                <input value={notes} onChange={(e) => setNotes(e.target.value)} />
-              </label>
-              <button disabled={busy} onClick={() => void clockOut()}>
-                {busy ? "Saving…" : "Clock out"}
-              </button>
-            </>
-          ) : (
-            <>
-              <p>Clock in to start your shift. This is recorded offline-first and queued for sync.</p>
-              <label>
-                Notes
-                <input value={notes} onChange={(e) => setNotes(e.target.value)} />
-              </label>
-              <button disabled={busy} onClick={() => void clockIn()}>
-                {busy ? "Saving…" : "Clock in"}
-              </button>
-            </>
-          )}
-          {error && <div className="error">{error}</div>}
-        </section>
-        <section className="grid">
-          {history.map((a) => (
-            <article className="card" key={a.id}>
-              <span className="eyebrow">{a.status}</span>
-              <h2>{fmt(a.clock_in_at)}</h2>
-              <p>
-                Out: {a.clock_out_at ? fmt(a.clock_out_at) : "—"} · Break: {a.break_minutes} min
-              </p>
-            </article>
-          ))}
-        </section>
-        <footer>MasterChef · Najjera II Central Market · Phase 3 Workforce</footer>
-      </main>
-    );
-  }
-
-  const modules = [
-    { name: "Orders", soon: true },
-    { name: "Kitchen", soon: true },
-    { name: "Cashier", soon: true },
-    { name: "Store", soon: true },
-    { name: "Attendance", soon: false },
-    { name: "Delivery", soon: true },
-  ];
-  return (
-    <main className="app">
-      <header>
-        <div>
-          <b>{APP_NAME} · Restaurant</b>
-          <span>{LOCATION_NAME}</span>
-        </div>
-        <div>
-          <span className="secure">● SECURE SESSION</span>
-          <button className="secondary" onClick={() => void logout()}>
-            Sign out
-          </button>
-        </div>
-      </header>
-      <section className="hero">
-        <div>
-          <div className="eyebrow">RESTAURANT OPERATIONS APPLICATION</div>
-          <h1>Operations are protected.</h1>
-          <p>
-            Signed in as <b>{session.user.display_name}</b> · {session.user.role}
-          </p>
-        </div>
-        <div className="badge">
-          OFFLINE-FIRST
-          <br />
-          <b>SECURITY + WORKFORCE ACTIVE</b>
-        </div>
-      </section>
-      <section className="grid">
-        {modules.map((m) => (
-          <article
-            className="card"
-            key={m.name}
-            style={{ cursor: m.soon ? "default" : "pointer" }}
-            onClick={() => {
-              if (!m.soon && m.name === "Attendance") setPanel("attendance");
-            }}
-          >
-            <span className="eyebrow">MODULE</span>
-            <h2>{m.name}</h2>
-            <p>
-              {m.soon
-                ? "Access is evaluated against the authenticated worker identity before sensitive actions are executed."
-                : "Clock in/out and view your attendance history. Offline-first with sync queue."}
-            </p>
-            <span className="pill">{m.soon ? "COMING SOON" : "PHASE 3 READY"}</span>
-          </article>
-        ))}
-      </section>
-      <footer>MasterChef · Najjera II Central Market</footer>
-    </main>
-  );
+type User={id:string;username:string;display_name:string;role:string;status:string;created_at:number};
+type Session={token:string;user:User;expires_at:number};
+type Category={id:string;name:string;active:boolean;sort_order:number};
+type MenuItem={id:string;category_id:string;name:string;description:string|null;station:string;active:boolean;dine_in:boolean;takeaway:boolean;delivery:boolean;current_price_minor:number;currency:string};
+type Table={id:string;name:string;active:boolean};
+type Order={id:string;order_number:number;order_type:"DineIn"|"Takeaway"|"Delivery";table_id:string|null;customer_name:string|null;customer_phone:string|null;waiter_id:string;status:string;subtotal_minor:number;discount_minor:number;total_minor:number;currency:string;notes:string|null};
+type OrderItem={id:string;order_id:string;menu_item_id:string;name_snapshot:string;unit_price_minor:number;quantity:number;total_minor:number;station:string;status:string;notes:string|null};
+const money=(n:number)=>`UGX ${n.toLocaleString()}`;
+export default function App(){
+ const [session,setSession]=useState<Session|null>(null),[setup,setSetup]=useState(false),[username,setUsername]=useState(""),[displayName,setDisplayName]=useState(""),[password,setPassword]=useState(""),[error,setError]=useState(""),[busy,setBusy]=useState(false);
+ const [panel,setPanel]=useState<"home"|"menu"|"orders"|"attendance">("home");
+ const [categories,setCategories]=useState<Category[]>([]),[items,setItems]=useState<MenuItem[]>([]),[tables,setTables]=useState<Table[]>([]),[orders,setOrders]=useState<Order[]>([]),[selected,setSelected]=useState<Order|null>(null),[orderItems,setOrderItems]=useState<OrderItem[]>([]);
+ const [orderType,setOrderType]=useState<"DineIn"|"Takeaway"|"Delivery">("DineIn"),[tableId,setTableId]=useState(""),[customer,setCustomer]=useState(""),[phone,setPhone]=useState(""),[orderNotes,setOrderNotes]=useState("");
+ const [qty,setQty]=useState<Record<string,number>>({}); const [categoryId,setCategoryId]=useState(""); const [newCat,setNewCat]=useState(""); const [newTable,setNewTable]=useState(""); const [newItem,setNewItem]=useState({categoryId:"",name:"",station:"KITCHEN",price:"",description:"",dineIn:true,takeaway:true,delivery:false});
+ async function login(){setBusy(true);setError("");try{const s=await invoke<Session>("login",{username,password});setSession(s);setPassword("")}catch{setError("Unable to sign in. Check your credentials or contact the CEO.")}finally{setBusy(false)}}
+ async function bootstrap(){setBusy(true);setError("");try{await invoke("bootstrap_ceo",{username,displayName,password});setSetup(false);setDisplayName("");setPassword("");setError("Initial local CEO created. Sign in to continue.")}catch(e){setError(String(e))}finally{setBusy(false)}}
+ async function logout(){if(!session)return;try{await invoke("logout",{token:session.token})}finally{setSession(null);setPanel("home")}}
+ async function loadMenu(){if(!session)return;try{const [c,i,t]=await Promise.all([invoke<Category[]>("menu_categories",{token:session.token}),invoke<MenuItem[]>("menu_items",{token:session.token,categoryId:categoryId||null}),invoke<Table[]>("restaurant_tables",{token:session.token})]);setCategories(c);setItems(i);setTables(t)}catch(e){setError(String(e))}}
+ async function loadOrders(){if(!session)return;try{const o=await invoke<Order[]>("order_list",{token:session.token,limit:50});setOrders(o);if(selected){const fresh=o.find(x=>x.id===selected.id);if(fresh)setSelected(fresh)}}catch(e){setError(String(e))}}
+ async function selectOrder(o:Order){if(!session)return;setSelected(o);try{setOrderItems(await invoke<OrderItem[]>("order_items",{token:session.token,orderId:o.id}))}catch(e){setError(String(e))}}
+ useEffect(()=>{if(session&&panel==="menu")void loadMenu()},[session,panel,categoryId]);useEffect(()=>{if(session&&panel==="orders")void loadOrders()},[session,panel]);
+ async function createOrder(){if(!session)return;if(orderType==="DineIn"&&!tableId){setError("Select a table for dine-in orders.");return}setBusy(true);setError("");try{const o=await invoke<Order>("order_create",{token:session.token,orderType,tableId:tableId||null,customerName:customer||null,customerPhone:phone||null,notes:orderNotes||null});setSelected(o);setOrderItems([]);setOrders(x=>[o,...x]);setCustomer("");setPhone("");setOrderNotes("")}catch(e){setError(String(e))}finally{setBusy(false)}}
+ async function addItem(item:MenuItem){if(!session||!selected){setError("Create or select an order first.");return}setBusy(true);setError("");try{const q=Math.max(1,qty[item.id]||1);const i=await invoke<OrderItem>("order_add_item",{token:session.token,orderId:selected.id,menuItemId:item.id,quantity:q,notes:null});setOrderItems(x=>[...x,i]);const o=await invoke<Order>("order_get",{token:session.token,orderId:selected.id});setSelected(o);setOrders(x=>x.map(v=>v.id===o.id?o:v));setQty(x=>({...x,[item.id]:1}))}catch(e){setError(String(e))}finally{setBusy(false)}}
+ async function transition(status:"Submitted"|"Preparing"|"Ready"|"Served"|"Completed"|"Cancelled"){if(!session||!selected)return;const reason=status==="Cancelled"?prompt("Cancellation reason")||"":"";if(status==="Cancelled"&&!reason)return;setBusy(true);try{const o=await invoke<Order>("order_transition",{token:session.token,orderId:selected.id,status,reason:reason||null});setSelected(o);setOrders(x=>x.map(v=>v.id===o.id?o:v))}catch(e){setError(String(e))}finally{setBusy(false)}}
+ async function cancelItem(i:OrderItem){if(!session)return;const reason=prompt("Reason for cancelling this item")||"";if(!reason)return;setBusy(true);try{await invoke("order_cancel_item",{token:session.token,itemId:i.id,reason});await selectOrder(selected!)}catch(e){setError(String(e))}finally{setBusy(false)}}
+ async function createCategory(){if(!session||!newCat.trim())return;try{await invoke("menu_create_category",{token:session.token,name:newCat.trim(),sortOrder:0});setNewCat("");await loadMenu()}catch(e){setError(String(e))}}
+ async function createTable(){if(!session||!newTable.trim())return;try{await invoke("menu_create_table",{token:session.token,name:newTable.trim()});setNewTable("");await loadMenu()}catch(e){setError(String(e))}}
+ async function createItem(){if(!session||!newItem.categoryId||!newItem.name.trim()||!newItem.price)return;try{await invoke("menu_create_item",{token:session.token,categoryId:newItem.categoryId,name:newItem.name.trim(),description:newItem.description||null,station:newItem.station,priceMinor:Number(newItem.price),currency:"UGX",dineIn:newItem.dineIn,takeaway:newItem.takeaway,delivery:newItem.delivery});setNewItem(x=>({...x,name:"",price:"",description:""}));await loadMenu()}catch(e){setError(String(e))}}
+ if(!session)return <main className="auth"><section className="card login"><div className="logo">M</div><div className="eyebrow">{APP_NAME.toUpperCase()} · RESTAURANT APPLICATION</div><h1>{setup?"Initialize this device":"Sign in"}</h1><p>{LOCATION_NAME} · offline-first operations</p>{setup&&<label>Administrator name<input value={displayName} onChange={e=>setDisplayName(e.target.value)}/></label>}<label>Username<input value={username} onChange={e=>setUsername(e.target.value)} autoComplete="username"/></label><label>Password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} autoComplete={setup?"new-password":"current-password"}/></label><button disabled={busy} onClick={()=>void(setup?bootstrap():login())}>{busy?"Please wait…":setup?"Initialize securely":"Sign in"}</button><button className="link" onClick={()=>{setSetup(!setup);setError("")}}>{setup?"Back to sign in":"First launch? Initialize device"}</button>{error&&<div className="error">{error}</div>}<small>Every operational mutation is authorized by the native security core and persisted locally before synchronization.</small></section></main>;
+ return <main className="app"><header><div><b>{APP_NAME} · Restaurant</b><span>{LOCATION_NAME}</span></div><div><span className="secure">● {session.user.display_name} · {session.user.role}</span><button className="secondary" onClick={()=>void logout()}>Sign out</button></div></header><nav className="nav"><button onClick={()=>setPanel("home")} className={panel==="home"?"active":""}>Overview</button><button onClick={()=>setPanel("orders")} className={panel==="orders"?"active":""}>Orders</button><button onClick={()=>setPanel("menu")} className={panel==="menu"?"active":""}>Menu</button><button onClick={()=>setPanel("attendance")} className={panel==="attendance"?"active":""}>Attendance</button></nav>{error&&<div className="error global">{error}</div>}
+ {panel==="home"&&<><section className="hero"><div><div className="eyebrow">RESTAURANT OPERATIONS</div><h1>MasterChef is ready.</h1><p>Orders, menu, workforce and future payment flows operate from one protected application.</p></div><div className="badge">OFFLINE-FIRST<br/><b>LOCAL DATA ACTIVE</b></div></section><section className="grid"><article className="card"><span className="eyebrow">ORDERS</span><h2>{orders.length}</h2><p>Recent local orders are retained even when connectivity is unavailable.</p><button onClick={()=>setPanel("orders")}>Open order terminal</button></article><article className="card"><span className="eyebrow">MENU</span><h2>{items.length}</h2><p>Dynamic categories, prices and preparation stations.</p><button onClick={()=>setPanel("menu")}>Manage menu</button></article><article className="card"><span className="eyebrow">SECURITY</span><h2>Protected</h2><p>Actions execute through authenticated native commands and audit events.</p></article></section></>}
+ {panel==="menu"&&<section className="content"><div className="section-head"><div><div className="eyebrow">PHASE 4 · MENU</div><h1>Menu & preparation routing</h1></div><button onClick={()=>void loadMenu()}>Refresh</button></div><div className="toolbar"><select value={categoryId} onChange={e=>setCategoryId(e.target.value)}><option value="">All categories</option>{categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>{session.user.role==="CEO"&&<><input placeholder="New category" value={newCat} onChange={e=>setNewCat(e.target.value)}/><button onClick={()=>void createCategory()}>Add category</button><input placeholder="New table" value={newTable} onChange={e=>setNewTable(e.target.value)}/><button onClick={()=>void createTable()}>Add table</button></>}</div>{session.user.role==="CEO"&&<div className="card admin"><h2>Add menu item</h2><div className="form-row"><select value={newItem.categoryId} onChange={e=>setNewItem(x=>({...x,categoryId:e.target.value}))}><option value="">Category</option>{categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select><input placeholder="Product name" value={newItem.name} onChange={e=>setNewItem(x=>({...x,name:e.target.value}))}/><input type="number" min="0" placeholder="Price UGX" value={newItem.price} onChange={e=>setNewItem(x=>({...x,price:e.target.value}))}/><input placeholder="Station e.g. KITCHEN" value={newItem.station} onChange={e=>setNewItem(x=>({...x,station:e.target.value}))}/><button onClick={()=>void createItem()}>Create item</button></div></div>}<div className="menu-grid">{items.map(i=><article className="card product" key={i.id}><div><span className="eyebrow">{i.station}</span><h2>{i.name}</h2><p>{i.description||"Available for restaurant operations."}</p></div><strong>{money(i.current_price_minor)}</strong><small>{i.dine_in?"Dine-in ":""}{i.takeaway?"Takeaway ":""}{i.delivery?"Delivery":""}</small></article>)}</div></section>}
+ {panel==="orders"&&<section className="content"><div className="section-head"><div><div className="eyebrow">PHASE 4 · ORDER TERMINAL</div><h1>Orders</h1></div><button onClick={()=>void loadOrders()}>Refresh</button></div><div className="orders-layout"><div><div className="card composer"><h2>New order</h2><div className="form-row"><select value={orderType} onChange={e=>setOrderType(e.target.value as typeof orderType)}><option value="DineIn">Dine-in</option><option value="Takeaway">Takeaway</option><option value="Delivery">Delivery</option></select>{orderType==="DineIn"&&<select value={tableId} onChange={e=>setTableId(e.target.value)}><option value="">Table</option>{tables.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select>}<input placeholder="Customer name" value={customer} onChange={e=>setCustomer(e.target.value)}/><input placeholder="Phone" value={phone} onChange={e=>setPhone(e.target.value)}/><button disabled={busy} onClick={()=>void createOrder()}>Start order</button></div></div><div className="menu-grid order-menu">{items.filter(i=>orderType==="DineIn"?i.dine_in:orderType==="Takeaway"?i.takeaway:i.delivery).map(i=><article className="card product" key={i.id}><div><span className="eyebrow">{i.station}</span><h2>{i.name}</h2><strong>{money(i.current_price_minor)}</strong></div><div className="form-row"><input type="number" min="1" value={qty[i.id]||1} onChange={e=>setQty(x=>({...x,[i.id]:Math.max(1,Number(e.target.value)||1)}))}/><button disabled={busy||!selected} onClick={()=>void addItem(i)}>Add</button></div></article>)}</div></div><aside className="card order-panel"><h2>Recent orders</h2>{orders.map(o=><button className={`order-row ${selected?.id===o.id?"selected":""}`} key={o.id} onClick={()=>void selectOrder(o)}><b>#{o.order_number}</b><span>{o.order_type}</span><span>{money(o.total_minor)}</span><em>{o.status}</em></button>)}{selected&&<div className="selected-order"><hr/><div className="eyebrow">ORDER #{selected.order_number}</div><h2>{money(selected.total_minor)}</h2>{orderItems.map(i=><div className="line" key={i.id}><span>{i.quantity} × {i.name_snapshot}</span><b>{money(i.total_minor)}</b>{i.status!=="CANCELLED"&&<button className="danger" onClick={()=>void cancelItem(i)}>×</button>}</div>)}<div className="form-row actions">{selected.status==="DRAFT"&&<button onClick={()=>void transition("Submitted")}>Send to kitchen</button>}{selected.status==="SUBMITTED"&&<button onClick={()=>void transition("Preparing")}>Start preparing</button>}{selected.status==="PREPARING"&&<button onClick={()=>void transition("Ready")}>Mark ready</button>}{selected.status==="READY"&&<button onClick={()=>void transition("Served")}>Mark served</button>}{selected.status==="SERVED"&&<button onClick={()=>void transition("Completed")}>Complete</button>}{!["COMPLETED","CANCELLED"].includes(selected.status)&&<button className="danger" onClick={()=>void transition("Cancelled")}>Cancel order</button>}</div></div>}</aside></div></section>}
+ {panel==="attendance"&&<section className="content"><div className="section-head"><div><div className="eyebrow">WORKFORCE</div><h1>Attendance</h1></div><p>Phase 3 remains available from the same protected application.</p></div><div className="card"><p>Use the workforce controls already implemented in the native core. Phase 4 does not weaken or bypass workforce security.</p></div></section>}
+ <footer>{APP_NAME} · {LOCATION_NAME} · Offline-first restaurant operating system</footer></main>;
 }
