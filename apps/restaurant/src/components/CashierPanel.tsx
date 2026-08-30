@@ -18,7 +18,7 @@ const AWAITING = ["READY", "SERVED"];
 const METHOD_LABEL: Record<Method, string> = { CASH: "Cash", MTN_MOMO: "MTN Mobile Money", AIRTEL_MONEY: "Airtel Money" };
 const money = (n: number) => `UGX ${n.toLocaleString()}`;
 
-export default function CashierPanel({ token, role, onError }: { token: string; role: string; onError?: (message: string) => void }) {
+export default function CashierPanel({ token, role, userId, onError }: { token: string; role: string; userId: string; onError?: (message: string) => void }) {
   const [orders, setOrders] = useState<PayableOrder[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [method, setMethod] = useState<Method>("CASH");
@@ -49,7 +49,7 @@ export default function CashierPanel({ token, role, onError }: { token: string; 
   const expectedCash = session ? session.floatMinor + session.payments.reduce((a, p) => a + p.amount, 0) : 0;
 
   async function enqueue(entityType: string, operation: string, payload: Record<string, unknown>, entityId: string) {
-    await invoke("sync_enqueue", { token, entityType, entityId, operation, payload });
+    await invoke("sync_enqueue", { token, entityType, entityId, operation, payload: { actor_id: userId, ...payload } });
     setPending(await invoke<number>("sync_pending_count", { token }));
   }
 

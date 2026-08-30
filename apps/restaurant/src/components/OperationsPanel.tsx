@@ -16,7 +16,7 @@ const LOCATIONS = ["STORE", "KITCHEN", "DISPLAY", "FRIDGE", "ICE_CREAM", "CHAPAT
 const EXPENSE_METHODS = ["CASH", "MTN_MOMO", "AIRTEL_MONEY", "OTHER"];
 const money = (n: number) => `UGX ${n.toLocaleString()}`;
 
-export default function OperationsPanel({ token, role, onError }: { token: string; role: string; onError?: (message: string) => void }) {
+export default function OperationsPanel({ token, role, userId, onError }: { token: string; role: string; userId: string; onError?: (message: string) => void }) {
   const [section, setSection] = useState<Section>("receive");
   const [pending, setPending] = useState(0);
   const [queued, setQueued] = useState<QueuedEvent[]>([]);
@@ -40,7 +40,7 @@ export default function OperationsPanel({ token, role, onError }: { token: strin
     setBusy(true);
     try {
       const eventId = crypto.randomUUID();
-      await invoke("sync_enqueue", { token, entityType, entityId: eventId, operation, payload: { client_event_id: eventId, ...payload } });
+      await invoke("sync_enqueue", { token, entityType, entityId: eventId, operation, payload: { client_event_id: eventId, actor_id: userId, ...payload } });
       setQueued((x) => [{ id: eventId, kind, summary, at: Math.floor(Date.now() / 1000) }, ...x].slice(0, 30));
       setNotice(`${kind} queued — ${summary}. Uploads with the next sync.`);
       await refreshPending();
