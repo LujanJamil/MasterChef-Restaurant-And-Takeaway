@@ -292,6 +292,10 @@ impl SyncStore {
 
     pub fn ingest_remote(&self, op: &SyncOperation) -> Result<bool, SyncError> {
         let c = self.conn.lock().expect("sync store mutex poisoned");
+        let actual = hash_payload(&serde_json::to_string(&op.payload)?);
+        if actual != op.payload_hash {
+            return Err(SyncError::Validation("payload hash mismatch".into()));
+        }
         let existing: Option<String> = c
             .query_row(
                 "SELECT payload_hash FROM sync_inbox WHERE operation_id=?1",
@@ -299,17 +303,8 @@ impl SyncStore {
                 |r| r.get(0),
             )
             .optional()?;
-        if let Some(h) = existing {
-            if h == op.payload_hash {
-                return Ok(false);
-            }
-            return Err(SyncError::Validation(
-                "operation id reused with different payload".into(),
-            ));
-        }
-        let actual = hash_payload(&serde_json::to_string(&op.payload)?);
-        if actual != op.payload_hash {
-            return Err(SyncError::Validation("payload hash mismatch".into()));
+        if existing.is_some() {
+            return Ok(false);
         }
         c.execute(
             "INSERT INTO sync_inbox(operation_id, device_id, received_at, payload_hash) VALUES (?,?,?,?)",
