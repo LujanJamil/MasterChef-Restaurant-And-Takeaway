@@ -1,0 +1,20 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default CEO capability – allows first-launch bootstrap and core auth commands",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "allow-bootstrap-ceo",
+    "allow-login",
+    "allow-logout",
+    "allow-current-user",
+    "allow-list-users",
+    "allow-create-user",
+    "allow-set-user-status",
+    "allow-change-password",
+    "allow-set-permission-override",
+    "allow-has-permission",
+    "allow-audit-events"
+  ]
+}
