@@ -236,13 +236,14 @@ impl OrdersStore {
         }
         let id = Uuid::new_v4().to_string();
         self.conn.execute(
-            "INSERT INTO menu_items(id,category_id,name,description,station,current_price_minor,currency,dine_in,takeaway,delivery,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO menu_items(id,category_id,name,description,station,active,current_price_minor,currency,dine_in,takeaway,delivery,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
             params![
                 id,
                 cat,
                 name.trim(),
                 desc,
                 station,
+                1,
                 price,
                 currency,
                 di as i64,
