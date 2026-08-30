@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-bootstrap-ceo"
+description = "Enables the bootstrap_ceo command without any pre-configured scope."
+commands.allow = ["bootstrap_ceo"]
+
+[[permission]]
+identifier = "deny-bootstrap-ceo"
+description = "Denies the bootstrap_ceo command without any pre-configured scope."
+commands.deny = ["bootstrap_ceo"]

@@ -1866,8 +1866,36 @@ name = "masterchef-restaurant"
 version = "0.1.0"
 dependencies = [
  "masterchef-native-core",
+ "masterchef-sync-core",
+ "masterchef-workforce-core",
+ "serde",
+ "serde_json",
  "tauri",
  "tauri-build",
+ "uuid",
+]
+
+[[package]]
+name = "masterchef-sync-core"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror 2.0.20",
+ "uuid",
+]
+
+[[package]]
+name = "masterchef-workforce-core"
+version = "0.1.0"
+dependencies = [
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.20",
  "uuid",
 ]
 
