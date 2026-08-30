@@ -5,7 +5,7 @@ on:
   pull_request:
 
 jobs:
-  typecheck:
+  quality:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,5 +16,15 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
       - run: pnpm install --no-frozen-lockfile
       - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm build
+      - run: cargo fmt --manifest-path packages/orders-core/Cargo.toml -- --check
+      - run: cargo test --manifest-path packages/orders-core/Cargo.toml
+      - run: cargo check --manifest-path apps/restaurant/src-tauri/Cargo.toml
+      - run: cargo test --manifest-path apps/restaurant/src-tauri/Cargo.toml
