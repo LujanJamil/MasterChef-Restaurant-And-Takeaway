@@ -151,9 +151,7 @@ impl InventoryStore {
     }
 
     pub fn stock_levels(&self, location: Option<&str>) -> Result<Vec<StockLevel>, InventoryError> {
-        let c = self.conn.lock().unwrap();
         let items = self.list_items(true)?;
-        drop(c);
         let c = self.conn.lock().unwrap();
         let mut out = Vec::new();
         for i in items {
