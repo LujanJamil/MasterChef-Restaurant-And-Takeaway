@@ -1,18 +1,19 @@
-use rusqlite::{ params, Connection, OptionalExtension };
-use serde::{ Deserialize, Serialize };
+use rusqlite::{params, Connection, OptionalExtension};
+use serde::{Deserialize, Serialize};
 use std::path::Path;
 use thiserror::Error;
 use uuid::Uuid;
 
 #[derive(Debug, Error)]
 pub enum OrdersError {
-    #[error("database error: {0}")] Db(#[from] rusqlite::Error),
-    #[error("invalid input: {0}")] Invalid(String),
-    #[error("not found: {0}")] NotFound(String),
-    #[error("invalid order transition from {from} to {to}")] InvalidTransition {
-        from: String,
-        to: String,
-    },
+    #[error("database error: {0}")]
+    Db(#[from] rusqlite::Error),
+    #[error("invalid input: {0}")]
+    Invalid(String),
+    #[error("not found: {0}")]
+    NotFound(String),
+    #[error("invalid order transition from {from} to {to}")]
+    InvalidTransition { from: String, to: String },
 }
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum OrderType {
@@ -168,7 +169,7 @@ impl OrdersStore {
         &self,
         name: &str,
         sort: i64,
-        now: i64
+        now: i64,
     ) -> Result<Category, OrdersError> {
         let n = name.trim();
         if n.is_empty() {
@@ -177,7 +178,7 @@ impl OrdersStore {
         let id = Uuid::new_v4().to_string();
         self.conn.execute(
             "INSERT INTO categories(id,name,sort_order,created_at,updated_at) VALUES(?,?,?,?,?)",
-            params![id, n, sort, now, now]
+            params![id, n, sort, now, now],
         )?;
         Ok(Category {
             id,
@@ -219,18 +220,20 @@ impl OrdersStore {
         to: bool,
         de: bool,
         actor: &str,
-        now: i64
+        now: i64,
     ) -> Result<MenuItem, OrdersError> {
         if price < 0 || currency.len() != 3 || station.trim().is_empty() || name.trim().is_empty() {
             return Err(OrdersError::Invalid("invalid menu item fields".into()));
         }
-        if
-            self.conn
-                .query_row("SELECT 1 FROM categories WHERE id=? AND active=1", params![cat], |r|
-                    r.get::<_, i64>(0)
-                )
-                .optional()?
-                .is_none()
+        if self
+            .conn
+            .query_row(
+                "SELECT 1 FROM categories WHERE id=? AND active=1",
+                params![cat],
+                |r| r.get::<_, i64>(0),
+            )
+            .optional()?
+            .is_none()
         {
             return Err(OrdersError::NotFound("category".into()));
         }
@@ -307,9 +310,15 @@ impl OrdersStore {
         let id = Uuid::new_v4().to_string();
         self.conn.execute(
             "INSERT INTO restaurant_tables(id,name,created_at,updated_at) VALUES(?,?,?,?)",
-            params![id, n, now, now]
+            params![id, n, now, now],
         )?;
-        Ok(Table { id, name: n.into(), active: true, created_at: now, updated_at: now })
+        Ok(Table {
+            id,
+            name: n.into(),
+            active: true,
+            created_at: now,
+            updated_at: now,
+        })
     }
     pub fn list_tables(&self) -> Result<Vec<Table>, OrdersError> {
         let mut s = self.conn.prepare(
@@ -338,24 +347,26 @@ impl OrdersStore {
         waiter: &str,
         notes: Option<&str>,
         currency: &str,
-        now: i64
+        now: i64,
     ) -> Result<Order, OrdersError> {
         if waiter.is_empty() || currency.len() != 3 {
             return Err(OrdersError::Invalid("invalid order fields".into()));
         }
         if k == OrderType::DineIn && table.is_none() {
-            return Err(OrdersError::Invalid("dine-in orders require a table".into()));
+            return Err(OrdersError::Invalid(
+                "dine-in orders require a table".into(),
+            ));
         }
         if let Some(t) = table {
-            if
-                self.conn
-                    .query_row(
-                        "SELECT 1 FROM restaurant_tables WHERE id=? AND active=1",
-                        params![t],
-                        |r| r.get::<_, i64>(0)
-                    )
-                    .optional()?
-                    .is_none()
+            if self
+                .conn
+                .query_row(
+                    "SELECT 1 FROM restaurant_tables WHERE id=? AND active=1",
+                    params![t],
+                    |r| r.get::<_, i64>(0),
+                )
+                .optional()?
+                .is_none()
             {
                 return Err(OrdersError::NotFound("table".into()));
             }
@@ -363,11 +374,11 @@ impl OrdersStore {
         let next: i64 = self.conn.query_row(
             "SELECT next_number FROM order_number_sequence WHERE id=1",
             [],
-            |r| r.get(0)
+            |r| r.get(0),
         )?;
         self.conn.execute(
             "UPDATE order_number_sequence SET next_number=next_number+1 WHERE id=1",
-            []
+            [],
         )?;
         let id = Uuid::new_v4().to_string();
         self.conn.execute(
@@ -400,23 +411,29 @@ impl OrdersStore {
         q: i64,
         notes: Option<&str>,
         actor: &str,
-        now: i64
+        now: i64,
     ) -> Result<OrderItem, OrdersError> {
         if q <= 0 {
             return Err(OrdersError::Invalid("quantity must be positive".into()));
         }
-        let st: String = self.conn
-            .query_row("SELECT status FROM orders WHERE id=?", params![oid], |r| r.get(0))
+        let st: String = self
+            .conn
+            .query_row("SELECT status FROM orders WHERE id=?", params![oid], |r| {
+                r.get(0)
+            })
             .optional()?
             .ok_or_else(|| OrdersError::NotFound("order".into()))?;
         if st != "DRAFT" && st != "SUBMITTED" {
-            return Err(OrdersError::Invalid("items cannot be changed in this state".into()));
+            return Err(OrdersError::Invalid(
+                "items cannot be changed in this state".into(),
+            ));
         }
-        let (name, price, station): (String, i64, String) = self.conn
+        let (name, price, station): (String, i64, String) = self
+            .conn
             .query_row(
                 "SELECT name,current_price_minor,station FROM menu_items WHERE id=? AND active=1",
                 params![mid],
-                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?))
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
             )
             .optional()?
             .ok_or_else(|| OrdersError::NotFound("menu item".into()))?;
@@ -436,7 +453,7 @@ impl OrdersStore {
             "ITEM_ADDED",
             None,
             &format!(r#"{{"quantity":{q}}}"#),
-            now
+            now,
         )?;
         Ok(OrderItem {
             id,
@@ -458,14 +475,19 @@ impl OrdersStore {
         iid: &str,
         actor: &str,
         reason: &str,
-        now: i64
+        now: i64,
     ) -> Result<(), OrdersError> {
         if reason.trim().is_empty() {
-            return Err(OrdersError::Invalid("cancellation reason is required".into()));
+            return Err(OrdersError::Invalid(
+                "cancellation reason is required".into(),
+            ));
         }
-        let (oid, st): (String, String) = self.conn
-            .query_row("SELECT order_id,status FROM order_items WHERE id=?", params![iid], |r|
-                Ok((r.get(0)?, r.get(1)?))
+        let (oid, st): (String, String) = self
+            .conn
+            .query_row(
+                "SELECT order_id,status FROM order_items WHERE id=?",
+                params![iid],
+                |r| Ok((r.get(0)?, r.get(1)?)),
             )
             .optional()?
             .ok_or_else(|| OrdersError::NotFound("order item".into()))?;
@@ -474,10 +496,18 @@ impl OrdersStore {
         }
         self.conn.execute(
             "UPDATE order_items SET status='CANCELLED',updated_at=? WHERE id=?",
-            params![now, iid]
+            params![now, iid],
         )?;
         self.recalc(&oid, now)?;
-        self.event(&oid, Some(iid), actor, "ITEM_CANCELLED", Some(reason), "{}", now)
+        self.event(
+            &oid,
+            Some(iid),
+            actor,
+            "ITEM_CANCELLED",
+            Some(reason),
+            "{}",
+            now,
+        )
     }
     pub fn set_discount(
         &self,
@@ -485,13 +515,18 @@ impl OrdersStore {
         d: i64,
         actor: &str,
         reason: &str,
-        now: i64
+        now: i64,
     ) -> Result<Order, OrdersError> {
         if d < 0 || reason.trim().is_empty() {
             return Err(OrdersError::Invalid("invalid discount".into()));
         }
-        let sub: i64 = self.conn
-            .query_row("SELECT subtotal_minor FROM orders WHERE id=?", params![oid], |r| r.get(0))
+        let sub: i64 = self
+            .conn
+            .query_row(
+                "SELECT subtotal_minor FROM orders WHERE id=?",
+                params![oid],
+                |r| r.get(0),
+            )
             .optional()?
             .ok_or_else(|| OrdersError::NotFound("order".into()))?;
         if d > sub {
@@ -499,7 +534,7 @@ impl OrdersStore {
         }
         self.conn.execute(
             "UPDATE orders SET discount_minor=?,total_minor=?,updated_at=? WHERE id=?",
-            params![d, sub - d, now, oid]
+            params![d, sub - d, now, oid],
         )?;
         self.event(
             oid,
@@ -508,7 +543,7 @@ impl OrdersStore {
             "DISCOUNT_SET",
             Some(reason),
             &format!(r#"{{"discount_minor":{d}}}"#),
-            now
+            now,
         )?;
         self.get_order(oid)
     }
@@ -518,10 +553,13 @@ impl OrdersStore {
         to: OrderStatus,
         actor: &str,
         reason: Option<&str>,
-        now: i64
+        now: i64,
     ) -> Result<Order, OrdersError> {
-        let from: String = self.conn
-            .query_row("SELECT status FROM orders WHERE id=?", params![oid], |r| r.get(0))
+        let from: String = self
+            .conn
+            .query_row("SELECT status FROM orders WHERE id=?", params![oid], |r| {
+                r.get(0)
+            })
             .optional()?
             .ok_or_else(|| OrdersError::NotFound("order".into()))?;
         let ok = match from.as_str() {
@@ -533,16 +571,29 @@ impl OrdersStore {
             _ => false,
         };
         if !ok {
-            return Err(OrdersError::InvalidTransition { from, to: to.s().into() });
+            return Err(OrdersError::InvalidTransition {
+                from,
+                to: to.s().into(),
+            });
         }
         if to == OrderStatus::Cancelled && reason.map(str::trim).unwrap_or("").is_empty() {
-            return Err(OrdersError::Invalid("cancellation reason is required".into()));
+            return Err(OrdersError::Invalid(
+                "cancellation reason is required".into(),
+            ));
         }
         self.conn.execute(
             "UPDATE orders SET status=?,updated_at=? WHERE id=?",
-            params![to.s(), now, oid]
+            params![to.s(), now, oid],
         )?;
-        self.event(oid, None, actor, &format!("STATUS_{}", to.s()), reason, "{}", now)?;
+        self.event(
+            oid,
+            None,
+            actor,
+            &format!("STATUS_{}", to.s()),
+            reason,
+            "{}",
+            now,
+        )?;
         self.get_order(oid)
     }
     pub fn get_order(&self, oid: &str) -> Result<Order, OrdersError> {
@@ -607,14 +658,14 @@ impl OrdersStore {
         let d: i64 = self.conn.query_row(
             "SELECT discount_minor FROM orders WHERE id=?",
             params![oid],
-            |r| r.get(0)
+            |r| r.get(0),
         )?;
         if d > sub {
             return Err(OrdersError::Invalid("discount exceeds subtotal".into()));
         }
         self.conn.execute(
             "UPDATE orders SET subtotal_minor=?,total_minor=?,updated_at=? WHERE id=?",
-            params![sub, sub - d, now, oid]
+            params![sub, sub - d, now, oid],
         )?;
         Ok(())
     }
@@ -626,10 +677,9 @@ impl OrdersStore {
         kind: &str,
         reason: Option<&str>,
         meta: &str,
-        now: i64
+        now: i64,
     ) -> Result<(), OrdersError> {
-        serde_json
-            ::from_str::<serde_json::Value>(meta)
+        serde_json::from_str::<serde_json::Value>(meta)
             .map_err(|_| OrdersError::Invalid("invalid event metadata".into()))?;
         self.conn.execute(
             "INSERT INTO order_events(id,order_id,item_id,actor_id,event_type,reason,metadata_json,created_at) VALUES(?,?,?,?,?,?,?,?)",
@@ -704,29 +754,32 @@ mod tests {
         let c = s.create_category("Food", 0, now).unwrap();
         let m = s
             .create_menu_item(
-                &c.id,
-                "Chapati",
-                None,
-                "CHAPATI",
-                5000,
-                "UGX",
-                true,
-                true,
-                false,
-                "ceo",
-                now
+                &c.id, "Chapati", None, "CHAPATI", 5000, "UGX", true, true, false, "ceo", now,
             )
             .unwrap();
         let t = s.create_table("T1", now).unwrap();
         let o = s
-            .create_order(OrderType::DineIn, Some(&t.id), None, None, "waiter", None, "UGX", now)
+            .create_order(
+                OrderType::DineIn,
+                Some(&t.id),
+                None,
+                None,
+                "waiter",
+                None,
+                "UGX",
+                now,
+            )
             .unwrap();
         let i = s.add_item(&o.id, &m.id, 2, None, "waiter", now).unwrap();
         assert_eq!(i.total_minor, 10000);
         let o = s.set_discount(&o.id, 1000, "ceo", "approved", now).unwrap();
         assert_eq!((o.subtotal_minor, o.total_minor), (10000, 9000));
-        let o = s.transition(&o.id, OrderStatus::Submitted, "waiter", None, now).unwrap();
-        let o = s.transition(&o.id, OrderStatus::Preparing, "cook", None, now).unwrap();
+        let o = s
+            .transition(&o.id, OrderStatus::Submitted, "waiter", None, now)
+            .unwrap();
+        let o = s
+            .transition(&o.id, OrderStatus::Preparing, "cook", None, now)
+            .unwrap();
         assert_eq!(o.status, OrderStatus::Preparing)
     }
     #[test]
@@ -735,20 +788,12 @@ mod tests {
         let c = s.create_category("Snacks", 0, 1).unwrap();
         let m = s
             .create_menu_item(
-                &c.id,
-                "Donut",
-                None,
-                "DISPLAY",
-                3000,
-                "UGX",
-                true,
-                true,
-                false,
-                "ceo",
-                1
+                &c.id, "Donut", None, "DISPLAY", 3000, "UGX", true, true, false, "ceo", 1,
             )
             .unwrap();
-        let o = s.create_order(OrderType::Takeaway, None, None, None, "w", None, "UGX", 1).unwrap();
+        let o = s
+            .create_order(OrderType::Takeaway, None, None, None, "w", None, "UGX", 1)
+            .unwrap();
         let i = s.add_item(&o.id, &m.id, 1, None, "w", 1).unwrap();
         s.cancel_item(&i.id, "w", "customer cancelled", 2).unwrap();
         assert_eq!(s.get_order(&o.id).unwrap().total_minor, 0);
