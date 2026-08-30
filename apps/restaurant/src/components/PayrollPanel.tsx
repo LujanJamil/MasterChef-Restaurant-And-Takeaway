@@ -85,7 +85,7 @@ export default function PayrollPanel({ token, role, userId, onError }: { token: 
       </div>
 
       <div className="toolbar">
-        {(["shifts", "swaps", ...(canManage ? ["payroll"] : [])] as const).map((t) => (
+        {(["shifts", "swaps", ...(canManage ? ["payroll"] : [])] as ("shifts" | "swaps" | "payroll")[]).map((t) => (
           <button key={t} className={`secondary ${tab === t ? "active" : ""}`} onClick={() => setTab(t)}>
             {t === "shifts" ? "Shifts" : t === "swaps" ? "Swaps" : "Payroll"}
           </button>
