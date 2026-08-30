@@ -6,6 +6,4 @@ node_modules
 apps/*/src-tauri/target
 apps/*/dist
 coverage
-# Rust build artifacts
-**/target/
-**/*.rs.bk
+**/target
