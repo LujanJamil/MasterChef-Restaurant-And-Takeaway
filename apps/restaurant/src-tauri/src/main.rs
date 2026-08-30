@@ -1,253 +1,45 @@
 use masterchef_native_core::{AuthSession, AuthStore, UserSummary};
-use masterchef_sync_core::{SyncOperation, SyncStore};
-use masterchef_workforce_core::{AttendanceRecord, Shift, WorkforceStore};
+use masterchef_orders_core::{Category,MenuItem,Order,OrderEvent,OrderItem,OrderStatus,OrderType,OrdersStore,Table};
+use masterchef_sync_core::{SyncOperation,SyncStore};
+use masterchef_workforce_core::{AttendanceRecord,Shift,WorkforceStore};
 use serde_json::Value;
-use std::{fs, path::PathBuf};
-use tauri::{Manager, State};
+use std::{fs,path::PathBuf};
+use tauri::{Manager,State};
 
-struct AppState {
-    auth: AuthStore,
-    sync: SyncStore,
-    workforce: WorkforceStore,
-    device_id: String,
-}
-fn err<E: std::fmt::Display>(e: E) -> String {
-    e.to_string()
-}
-fn setup_paths(app: &tauri::AppHandle) -> Result<(PathBuf, PathBuf, PathBuf, String), String> {
-    let dir = app.path().app_data_dir().map_err(err)?;
-    fs::create_dir_all(&dir).map_err(err)?;
-    let db = dir.join("masterchef-restaurant-security.sqlite3");
-    let sync_db = dir.join("masterchef-restaurant-sync.sqlite3");
-    let wf_db = dir.join("masterchef-restaurant-workforce.sqlite3");
-    let id_file = dir.join("device.id");
-    let device = match fs::read_to_string(&id_file) {
-        Ok(v) if v.trim().len() >= 8 => v.trim().to_string(),
-        _ => {
-            let v = uuid::Uuid::new_v4().to_string();
-            fs::write(&id_file, &v).map_err(err)?;
-            v
-        }
-    };
-    Ok((db, sync_db, wf_db, device))
-}
-
-#[tauri::command]
-fn bootstrap_ceo(
-    state: State<'_, AppState>,
-    username: String,
-    display_name: String,
-    password: String,
-) -> Result<UserSummary, String> {
-    state
-        .auth
-        .bootstrap_ceo(&username, &display_name, &password, &state.device_id)
-        .map_err(err)
-}
-#[tauri::command]
-fn login(
-    state: State<'_, AppState>,
-    username: String,
-    password: String,
-) -> Result<AuthSession, String> {
-    state
-        .auth
-        .login(&username, &password, &state.device_id)
-        .map_err(err)
-}
-#[tauri::command]
-fn logout(state: State<'_, AppState>, token: String) -> Result<(), String> {
-    state.auth.logout(&token, &state.device_id).map_err(err)
-}
-#[tauri::command]
-fn current_user(state: State<'_, AppState>, token: String) -> Result<UserSummary, String> {
-    state.auth.authenticate(&token).map_err(err)
-}
-#[tauri::command]
-fn sync_enqueue(
-    state: State<'_, AppState>,
-    token: String,
-    entity_type: String,
-    entity_id: String,
-    operation: String,
-    payload: Value,
-) -> Result<SyncOperation, String> {
-    state.auth.authenticate(&token).map_err(err)?;
-    state
-        .sync
-        .enqueue(&state.device_id, &entity_type, &entity_id, &operation, &payload)
-        .map_err(err)
-}
-#[tauri::command]
-fn sync_due(
-    state: State<'_, AppState>,
-    token: String,
-    limit: usize,
-) -> Result<Vec<SyncOperation>, String> {
-    state.auth.authenticate(&token).map_err(err)?;
-    state.sync.due_batch(now(), limit).map_err(err)
-}
-#[tauri::command]
-fn sync_claim(
-    state: State<'_, AppState>,
-    token: String,
-    ids: Vec<String>,
-) -> Result<usize, String> {
-    state.auth.authenticate(&token).map_err(err)?;
-    state.sync.claim(&ids).map_err(err)
-}
-#[tauri::command]
-fn sync_ack(state: State<'_, AppState>, token: String, id: String) -> Result<(), String> {
-    state.auth.authenticate(&token).map_err(err)?;
-    state.sync.ack(&id).map_err(err)
-}
-#[tauri::command]
-fn sync_fail(
-    state: State<'_, AppState>,
-    token: String,
-    id: String,
-    error: String,
-) -> Result<(), String> {
-    state.auth.authenticate(&token).map_err(err)?;
-    state.sync.fail(&id, &error).map_err(err)
-}
-#[tauri::command]
-fn sync_pending_count(state: State<'_, AppState>, token: String) -> Result<i64, String> {
-    state.auth.authenticate(&token).map_err(err)?;
-    state.sync.pending_count().map_err(err)
-}
-
-// ——— Phase 3 Workforce ———
-#[tauri::command]
-fn workforce_clock_in(
-    state: State<'_, AppState>,
-    token: String,
-    notes: Option<String>,
-) -> Result<AttendanceRecord, String> {
-    let user = state.auth.authenticate(&token).map_err(err)?;
-    state
-        .auth
-        .has_permission(&token, "attendance.manage")
-        .map_err(err)?
-        .then_some(())
-        .ok_or_else(|| "permission denied".to_string())?;
-    let rec = state
-        .workforce
-        .clock_in(&user.id, &state.device_id, notes.as_deref())
-        .map_err(err)?;
-    let _ = state.sync.enqueue(
-        &state.device_id,
-        "ATTENDANCE",
-        &rec.id,
-        "CREATE",
-        &serde_json::to_value(&rec).unwrap_or(Value::Null),
-    );
-    Ok(rec)
-}
-#[tauri::command]
-fn workforce_clock_out(
-    state: State<'_, AppState>,
-    token: String,
-    break_minutes: i64,
-    notes: Option<String>,
-) -> Result<AttendanceRecord, String> {
-    let user = state.auth.authenticate(&token).map_err(err)?;
-    state
-        .auth
-        .has_permission(&token, "attendance.manage")
-        .map_err(err)?
-        .then_some(())
-        .ok_or_else(|| "permission denied".to_string())?;
-    let rec = state
-        .workforce
-        .clock_out(&user.id, break_minutes, notes.as_deref())
-        .map_err(err)?;
-    let _ = state.sync.enqueue(
-        &state.device_id,
-        "ATTENDANCE",
-        &rec.id,
-        "UPDATE",
-        &serde_json::to_value(&rec).unwrap_or(Value::Null),
-    );
-    Ok(rec)
-}
-#[tauri::command]
-fn workforce_open_attendance(
-    state: State<'_, AppState>,
-    token: String,
-) -> Result<Option<AttendanceRecord>, String> {
-    let user = state.auth.authenticate(&token).map_err(err)?;
-    state.workforce.open_attendance(&user.id).map_err(err)
-}
-#[tauri::command]
-fn workforce_list_attendance(
-    state: State<'_, AppState>,
-    token: String,
-    limit: Option<usize>,
-) -> Result<Vec<AttendanceRecord>, String> {
-    let user = state.auth.authenticate(&token).map_err(err)?;
-    state
-        .workforce
-        .list_attendance(Some(&user.id), limit.unwrap_or(50))
-        .map_err(err)
-}
-#[tauri::command]
-fn workforce_list_shifts(
-    state: State<'_, AppState>,
-    token: String,
-    from: i64,
-    to: i64,
-    limit: Option<usize>,
-) -> Result<Vec<Shift>, String> {
-    let user = state.auth.authenticate(&token).map_err(err)?;
-    state
-        .workforce
-        .list_shifts(Some(&user.id), from, to, limit.unwrap_or(50))
-        .map_err(err)
-}
-
-fn now() -> i64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs() as i64
-}
-
-fn main() {
-    tauri::Builder::default()
-        .setup(|app| {
-            let (db, sync_db, wf_db, device) =
-                setup_paths(app.handle()).map_err(std::io::Error::other)?;
-            let auth = AuthStore::open(db).map_err(|e| std::io::Error::other(e.to_string()))?;
-            let sync =
-                SyncStore::open(sync_db).map_err(|e| std::io::Error::other(e.to_string()))?;
-            let workforce =
-                WorkforceStore::open(wf_db).map_err(|e| std::io::Error::other(e.to_string()))?;
-            app.manage(AppState {
-                auth,
-                sync,
-                workforce,
-                device_id: device,
-            });
-            Ok(())
-        })
-        .invoke_handler(tauri::generate_handler![
-            bootstrap_ceo,
-            login,
-            logout,
-            current_user,
-            sync_enqueue,
-            sync_due,
-            sync_claim,
-            sync_ack,
-            sync_fail,
-            sync_pending_count,
-            workforce_clock_in,
-            workforce_clock_out,
-            workforce_open_attendance,
-            workforce_list_attendance,
-            workforce_list_shifts
-        ])
-        .run(tauri::generate_context!())
-        .expect("error while running MasterChef Restaurant application");
-}
+struct AppState{auth:AuthStore,sync:SyncStore,workforce:WorkforceStore,orders:OrdersStore,device_id:String}
+fn err<E:std::fmt::Display>(e:E)->String{e.to_string()}
+fn now()->i64{std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs() as i64}
+fn setup_paths(app:&tauri::AppHandle)->Result<(PathBuf,PathBuf,PathBuf,PathBuf,String),String>{let dir=app.path().app_data_dir().map_err(err)?;fs::create_dir_all(&dir).map_err(err)?;let db=dir.join("masterchef-restaurant-security.sqlite3");let sync_db=dir.join("masterchef-restaurant-sync.sqlite3");let wf_db=dir.join("masterchef-restaurant-workforce.sqlite3");let order_db=dir.join("masterchef-restaurant-orders.sqlite3");let id_file=dir.join("device.id");let device=match fs::read_to_string(&id_file){Ok(v)if v.trim().len()>=8=>v.trim().to_string(),_=>(_=>{let v=uuid::Uuid::new_v4().to_string();fs::write(&id_file,&v).map_err(err)?;v})()};Ok((db,sync_db,wf_db,order_db,device))}
+#[tauri::command]fn bootstrap_ceo(state:State<'_,AppState>,username:String,display_name:String,password:String)->Result<UserSummary,String>{state.auth.bootstrap_ceo(&username,&display_name,&password,&state.device_id).map_err(err)}
+#[tauri::command]fn login(state:State<'_,AppState>,username:String,password:String)->Result<AuthSession,String>{state.auth.login(&username,&password,&state.device_id).map_err(err)}
+#[tauri::command]fn logout(state:State<'_,AppState>,token:String)->Result<(),String>{state.auth.logout(&token,&state.device_id).map_err(err)}
+#[tauri::command]fn current_user(state:State<'_,AppState>,token:String)->Result<UserSummary,String>{state.auth.authenticate(&token).map_err(err)}
+fn require(state:&AppState,token:&str,p:&str)->Result<UserSummary,String>{let u=state.auth.authenticate(token).map_err(err)?;if !state.auth.has_permission(token,p).map_err(err)?{return Err(format!("permission denied: {p}"))}Ok(u)}
+fn enqueue(state:&AppState,entity:&str,id:&str,op:&str,payload:&impl serde::Serialize){let _=state.sync.enqueue(&state.device_id,entity,id,op,&serde_json::to_value(payload).unwrap_or(Value::Null));}
+#[tauri::command]fn sync_enqueue(state:State<'_,AppState>,token:String,entity_type:String,entity_id:String,operation:String,payload:Value)->Result<SyncOperation,String>{state.auth.authenticate(&token).map_err(err)?;state.sync.enqueue(&state.device_id,&entity_type,&entity_id,&operation,&payload).map_err(err)}
+#[tauri::command]fn sync_due(state:State<'_,AppState>,token:String,limit:usize)->Result<Vec<SyncOperation>,String>{state.auth.authenticate(&token).map_err(err)?;state.sync.due_batch(now(),limit).map_err(err)}
+#[tauri::command]fn sync_claim(state:State<'_,AppState>,token:String,ids:Vec<String>)->Result<usize,String>{state.auth.authenticate(&token).map_err(err)?;state.sync.claim(&ids).map_err(err)}
+#[tauri::command]fn sync_ack(state:State<'_,AppState>,token:String,id:String)->Result<(),String>{state.auth.authenticate(&token).map_err(err)?;state.sync.ack(&id).map_err(err)}
+#[tauri::command]fn sync_fail(state:State<'_,AppState>,token:String,id:String,error:String)->Result<(),String>{state.auth.authenticate(&token).map_err(err)?;state.sync.fail(&id,&error).map_err(err)}
+#[tauri::command]fn sync_pending_count(state:State<'_,AppState>,token:String)->Result<i64,String>{state.auth.authenticate(&token).map_err(err)?;state.sync.pending_count().map_err(err)}
+#[tauri::command]fn workforce_clock_in(state:State<'_,AppState>,token:String,notes:Option<String>)->Result<AttendanceRecord,String>{let u=require(&state, &token,"attendance.manage")?;let r=state.workforce.clock_in(&u.id,&state.device_id,notes.as_deref()).map_err(err)?;enqueue(&state,"ATTENDANCE",&r.id,"CREATE",&r);Ok(r)}
+#[tauri::command]fn workforce_clock_out(state:State<'_,AppState>,token:String,break_minutes:i64,notes:Option<String>)->Result<AttendanceRecord,String>{let u=require(&state,&token,"attendance.manage")?;let r=state.workforce.clock_out(&u.id,break_minutes,notes.as_deref()).map_err(err)?;enqueue(&state,"ATTENDANCE",&r.id,"UPDATE",&r);Ok(r)}
+#[tauri::command]fn workforce_open_attendance(state:State<'_,AppState>,token:String)->Result<Option<AttendanceRecord>,String>{let u=state.auth.authenticate(&token).map_err(err)?;state.workforce.open_attendance(&u.id).map_err(err)}
+#[tauri::command]fn workforce_list_attendance(state:State<'_,AppState>,token:String,limit:Option<usize>)->Result<Vec<AttendanceRecord>,String>{let u=state.auth.authenticate(&token).map_err(err)?;state.workforce.list_attendance(Some(&u.id),limit.unwrap_or(50)).map_err(err)}
+#[tauri::command]fn workforce_list_shifts(state:State<'_,AppState>,token:String,from:i64,to:i64,limit:Option<usize>)->Result<Vec<Shift>,String>{let u=state.auth.authenticate(&token).map_err(err)?;state.workforce.list_shifts(Some(&u.id),from,to,limit.unwrap_or(50)).map_err(err)}
+#[tauri::command]fn menu_categories(state:State<'_,AppState>,token:String)->Result<Vec<Category>,String>{state.auth.authenticate(&token).map_err(err)?;state.orders.list_categories().map_err(err)}
+#[tauri::command]fn menu_items(state:State<'_,AppState>,token:String,category_id:Option<String>)->Result<Vec<MenuItem>,String>{state.auth.authenticate(&token).map_err(err)?;state.orders.list_menu(category_id.as_deref()).map_err(err)}
+#[tauri::command]fn restaurant_tables(state:State<'_,AppState>,token:String)->Result<Vec<Table>,String>{state.auth.authenticate(&token).map_err(err)?;state.orders.list_tables().map_err(err)}
+#[tauri::command]fn menu_create_category(state:State<'_,AppState>,token:String,name:String,sort_order:Option<i64>)->Result<Category,String>{let u=require(&state,&token,"system.manage")?;let r=state.orders.create_category(&name,sort_order.unwrap_or(0),now()).map_err(err)?;enqueue(&state,"MENU_CATEGORY",&r.id,"CREATE",&r);let _=u;Ok(r)}
+#[tauri::command]fn menu_create_item(state:State<'_,AppState>,token:String,category_id:String,name:String,description:Option<String>,station:String,price_minor:i64,currency:Option<String>,dine_in:bool,takeaway:bool,delivery:bool)->Result<MenuItem,String>{let u=require(&state,&token,"system.manage")?;let r=state.orders.create_menu_item(&category_id,&name,description.as_deref(),&station,price_minor,currency.as_deref().unwrap_or("UGX"),dine_in,takeaway,delivery,&u.id,now()).map_err(err)?;enqueue(&state,"MENU_ITEM",&r.id,"CREATE",&r);Ok(r)}
+#[tauri::command]fn menu_create_table(state:State<'_,AppState>,token:String,name:String)->Result<Table,String>{let u=require(&state,&token,"system.manage")?;let r=state.orders.create_table(&name,now()).map_err(err)?;enqueue(&state,"RESTAURANT_TABLE",&r.id,"CREATE",&r);let _=u;Ok(r)}
+#[tauri::command]fn order_create(state:State<'_,AppState>,token:String,order_type:OrderType,table_id:Option<String>,customer_name:Option<String>,customer_phone:Option<String>,notes:Option<String>)->Result<Order,String>{let u=require(&state,&token,"orders.create")?;let r=state.orders.create_order(order_type,table_id.as_deref(),customer_name.as_deref(),customer_phone.as_deref(),&u.id,notes.as_deref(),"UGX",now()).map_err(err)?;enqueue(&state,"ORDER",&r.id,"CREATE",&r);Ok(r)}
+#[tauri::command]fn order_add_item(state:State<'_,AppState>,token:String,order_id:String,menu_item_id:String,quantity:i64,notes:Option<String>)->Result<OrderItem,String>{let u=require(&state,&token,"orders.edit")?;let r=state.orders.add_item(&order_id,&menu_item_id,quantity,notes.as_deref(),&u.id,now()).map_err(err)?;enqueue(&state,"ORDER_ITEM",&r.id,"CREATE",&r);let o=state.orders.get_order(&order_id).map_err(err)?;enqueue(&state,"ORDER",&o.id,"UPDATE",&o);Ok(r)}
+#[tauri::command]fn order_cancel_item(state:State<'_,AppState>,token:String,item_id:String,reason:String)->Result<(),String>{let u=require(&state,&token,"orders.cancel")?;state.orders.cancel_item(&item_id,&u.id,&reason,now()).map_err(err)?;Ok(())}
+#[tauri::command]fn order_discount(state:State<'_,AppState>,token:String,order_id:String,discount_minor:i64,reason:String)->Result<Order,String>{let u=require(&state,&token,"orders.cancel")?;let r=state.orders.set_discount(&order_id,discount_minor,&u.id,&reason,now()).map_err(err)?;enqueue(&state,"ORDER",&r.id,"UPDATE",&r);Ok(r)}
+#[tauri::command]fn order_transition(state:State<'_,AppState>,token:String,order_id:String,status:OrderStatus,reason:Option<String>)->Result<Order,String>{let p=if status==OrderStatus::Cancelled{"orders.cancel"}else{"orders.edit"};let u=require(&state,&token,p)?;let r=state.orders.transition(&order_id,status,&u.id,reason.as_deref(),now()).map_err(err)?;enqueue(&state,"ORDER",&r.id,"UPDATE",&r);Ok(r)}
+#[tauri::command]fn order_get(state:State<'_,AppState>,token:String,order_id:String)->Result<Order,String>{state.auth.authenticate(&token).map_err(err)?;state.orders.get_order(&order_id).map_err(err)}
+#[tauri::command]fn order_list(state:State<'_,AppState>,token:String,limit:Option<usize>)->Result<Vec<Order>,String>{state.auth.authenticate(&token).map_err(err)?;state.orders.list_orders(limit.unwrap_or(50)).map_err(err)}
+#[tauri::command]fn order_items(state:State<'_,AppState>,token:String,order_id:String)->Result<Vec<OrderItem>,String>{state.auth.authenticate(&token).map_err(err)?;state.orders.list_items(&order_id).map_err(err)}
+#[tauri::command]fn order_events(state:State<'_,AppState>,token:String,order_id:String)->Result<Vec<OrderEvent>,String>{let u=require(&state,&token,"audit.view")?;let _=u;state.orders.list_events(&order_id).map_err(err)}
+fn main(){tauri::Builder::default().setup(|app|{let(db,sync_db,wf_db,order_db,device)=setup_paths(app.handle()).map_err(std::io::Error::other)?;let auth=AuthStore::open(db).map_err(|e|std::io::Error::other(e.to_string()))?;let sync=SyncStore::open(sync_db).map_err(|e|std::io::Error::other(e.to_string()))?;let workforce=WorkforceStore::open(wf_db).map_err(|e|std::io::Error::other(e.to_string()))?;let orders=OrdersStore::open(order_db).map_err(|e|std::io::Error::other(e.to_string()))?;app.manage(AppState{auth,sync,workforce,orders,device_id:device});Ok(())}).invoke_handler(tauri::generate_handler![bootstrap_ceo,login,logout,current_user,sync_enqueue,sync_due,sync_claim,sync_ack,sync_fail,sync_pending_count,workforce_clock_in,workforce_clock_out,workforce_open_attendance,workforce_list_attendance,workforce_list_shifts,menu_categories,menu_items,restaurant_tables,menu_create_category,menu_create_item,menu_create_table,order_create,order_add_item,order_cancel_item,order_discount,order_transition,order_get,order_list,order_items,order_events]).run(tauri::generate_context!()).expect("error while running MasterChef Restaurant application");}
