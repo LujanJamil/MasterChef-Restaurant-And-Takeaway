@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import KpiBoard from "./KpiBoard";
 import type { WorkerRole } from "@masterchef/domain";
 
 type UserStatus = "ACTIVE" | "SUSPENDED" | "INACTIVE";
@@ -39,7 +40,10 @@ export default function CommandCenterPanel({ users, audits, onRefresh }: { users
         .cc-table th,.cc-table td{text-align:left;padding:.45rem .6rem;border-bottom:1px solid #e5e7eb;white-space:nowrap}
         .cc-table th{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:#57606a}
         .cc-scroll{overflow:auto;max-height:340px}
+        .kpi-warn{color:#9a6700}
       `}</style>
+
+      <KpiBoard/>
 
       <div className="cc-note">
         Operational KPIs (today's sales, cash position, low stock, delayed orders) will appear here as Phase 10 aggregates the synced restaurant data. This center currently reflects identity, authorization and audit truth from this device's security core.
