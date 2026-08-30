@@ -99,6 +99,16 @@ importers:
 
   packages/domain: {}
 
+  packages/inventory-core:
+    dependencies:
+      '@masterchef/domain':
+        specifier: workspace:*
+        version: link:../domain
+    devDependencies:
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
   packages/native-core: {}
 
   packages/permissions: {}

@@ -22,3 +22,4 @@ export interface WorkerAdvance{id:string;workerId:string;amountMinor:number;curr
 export interface WorkerPayment{id:string;workerId:string;amountMinor:number;currency:string;paymentMethod:PaymentMethod;reference:string|null;paidBy:string;createdAt:number;}
 export interface PayrollSummary{grossMinor:number;adjustmentsMinor:number;advancesMinor:number;paidMinor:number;balanceMinor:number;}
 export * from "./orders.js";
+export * from "./inventory.js";
