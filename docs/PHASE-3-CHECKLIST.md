@@ -1,24 +1,101 @@
-# Phase 3 Checklist — Workforce
+# Phase 3 Verification Checklist — Workforce
 
-- [x] `packages/workforce-core` crate with SQLite schema for attendance, shifts, pay_records
-- [x] Clock-in rejects second open session for same worker
-- [x] Clock-out requires open session; records break minutes
-- [x] Shift create validates ends_at > starts_at
-- [x] Pay create computes amount_minor = round(hours × rate_minor); unique period per worker
-- [x] Approve pay transitions DRAFT → APPROVED only
-- [x] Domain types exported from `@masterchef/domain`
-- [x] Permissions already include attendance.* and pay.* (Phase 1/2)
-- [x] Restaurant app: clock-in/out commands + Attendance panel
-- [x] CEO app: list attendance / shifts / pay + create shift / create & approve pay
-- [x] Supabase migration `202608300002_phase3_workforce.sql` (tables + record_workforce_entity RPC)
-- [x] Status docs and README roadmap updated
-- [x] Unit tests: clock_in_out_and_hours, shift_and_pay, cannot_clock_out_without_in
+## Automated core tests
 
-## How to pass verification locally
+- [ ] `cargo fmt --all -- --check`
+- [ ] `cargo check --workspace`
+- [ ] `cargo test --workspace`
+- [ ] workspace `typecheck`
+- [ ] workspace `lint`
+- [ ] application production builds
 
-1. `cd packages/workforce-core && cargo test`
-2. Ensure Phase 1 bootstrap has a CEO and at least one worker.
-3. Restaurant app: sign in → Attendance panel → Clock in → Clock out with break.
-4. CEO app: create a shift for the worker; create a pay record for a period; approve it.
-5. Optionally enqueue sync ops with entity_type `ATTENDANCE` / `SHIFT` / `PAY` and confirm Phase 2 queue accepts them.
-6. Apply Supabase migration on a free-tier project and call `record_workforce_entity` with a valid device token.
+## Attendance
+
+- [ ] Clock-in creates a durable local record.
+- [ ] Second open clock-in is rejected atomically.
+- [ ] Clock-out requires an open session.
+- [ ] Break minutes are validated and persisted.
+- [ ] Application restart preserves attendance.
+- [ ] Invalid worker/device identifiers are rejected.
+
+## Availability and shifts
+
+- [ ] Weekly availability can be created and queried.
+- [ ] Invalid weekday/time windows are rejected.
+- [ ] DAY, NIGHT, and CUSTOM shifts are supported.
+- [ ] Shift end must be after start.
+- [ ] Shift lifecycle states are enforced.
+- [ ] A worker can be replaced through an auditable swap.
+- [ ] Approved swap changes the actual assigned worker.
+- [ ] A swap cannot replace a worker with themselves.
+- [ ] Overnight NIGHT shifts remain a single logical shift across midnight.
+
+## Payroll
+
+- [ ] CEO-controlled worker/role/shift pay rates support effective dates.
+- [ ] Historical pay uses the effective rate at the time of work.
+- [ ] Payroll amount is deterministic in minor currency units.
+- [ ] Draft → Approved → Paid lifecycle is enforced.
+- [ ] Invalid state transitions are rejected.
+- [ ] Adjustments require a reason and author.
+- [ ] Advances are separately recorded as outstanding liabilities.
+- [ ] Worker payments record CASH/MTN_MOMO/AIRTEL_MONEY/OTHER and payer.
+- [ ] Outstanding balance is calculated from immutable ledger records.
+- [ ] Delayed/partial payment leaves the correct balance owed.
+- [ ] No historical pay record is silently rewritten when the CEO changes a current rate.
+
+## Real MasterChef workflows
+
+- [ ] Worker chooses/requests an available day or night shift according to configured availability.
+- [ ] Manager/CEO can assign a worker to a shift.
+- [ ] Worker can request a swap/replacement.
+- [ ] Authorized management can approve the swap.
+- [ ] Replacement worker receives the worked shift/pay attribution.
+- [ ] Worker can work both day and night shifts on the same calendar day when explicitly assigned.
+- [ ] Late arrival can be represented without falsifying clock-in time.
+- [ ] Early departure can be represented and later handled through an adjustment policy.
+- [ ] Partial shift work can be represented without corrupting the scheduled shift.
+- [ ] Absence can be distinguished from a covered/replaced shift.
+- [ ] Manager cannot perform CEO-only configuration unless explicitly granted permission.
+
+## Offline and synchronization
+
+- [ ] Every workforce write survives loss of internet.
+- [ ] Workforce entities enqueue through the Phase 2 sync boundary.
+- [ ] Replaying the same operation does not create duplicates.
+- [ ] Failed synchronization retries safely.
+- [ ] Conflicts do not silently overwrite history.
+- [ ] Restart during pending synchronization preserves the operation.
+- [ ] Local records remain readable while cloud services are unavailable.
+
+## Security
+
+- [ ] Authorization is enforced in native/domain code, not only UI controls.
+- [ ] Every sensitive workforce mutation has an authenticated actor.
+- [ ] CEO overrides are auditable.
+- [ ] Ordinary users cannot directly edit historical payroll/payment evidence.
+- [ ] Secrets are not committed to source control.
+- [ ] Database integrity constraints reject malformed states.
+
+## Manual end-to-end verification
+
+1. Sign in as CEO.
+2. Create a worker with an appropriate role.
+3. Configure that worker's availability.
+4. Create a DAY shift and a NIGHT shift.
+5. Set distinct effective pay rates for the worker.
+6. Sign in as the worker on the Restaurant application.
+7. Clock in/out and confirm the records survive an application restart.
+8. Create a replacement request and approve it as authorized management.
+9. Generate payroll from actual attendance/shift data.
+10. Approve payroll.
+11. Record a partial cash payment.
+12. Record an advance.
+13. Confirm the worker balance equals earned + adjustments − advances − payments.
+14. Change the worker's future pay rate and confirm historical payroll remains unchanged.
+15. Disconnect internet and repeat a workforce write.
+16. Restart while offline.
+17. Restore internet and confirm the operation synchronizes exactly once.
+18. Inspect audit records for the sensitive actions.
+
+**Gate:** Phase 3 remains `IMPLEMENTATION COMPLETE / VERIFICATION PENDING` until every applicable automated and manual check above is green.
