@@ -10,3 +10,7 @@
 .pill-ok { background:#e6f6ec; color:#1a7f37; }
 .pill-warn { background:#fff3d6; color:#9a6700; }
 .pill-muted { background:#eef0f2; color:#57606a; }
+
+/* Sync uploader status (Phase 2 completion) */
+.sync-status { display:flex; align-items:center; gap:.5rem; margin-right:.5rem; }
+.sync-status small { color:#57606a; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
