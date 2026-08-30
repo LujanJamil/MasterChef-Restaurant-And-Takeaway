@@ -96,15 +96,180 @@ impl SyncStore {
 
     fn migrate(&self) -> Result<(), SyncError> {
         let c = self.conn.lock().expect("sync store mutex poisoned");
+        c.execute_batch(
+            "CREATE TABLE IF NOT EXISTS sync_operations(
+                id TEXT PRIMARY KEY,
+                device_id TEXT NOT NULL,
+                entity_type TEXT NOT NULL,
+                entity_id TEXT NOT NULL,
+                operation TEXT NOT NULL,
+                payload TEXT NOT NULL,
+                payload_hash TEXT NOT NULL,
+                sequence INTEGER NOT NULL,
+                state TEXT NOT NULL,
+                attempts INTEGER NOT NULL DEFAULT 0,
+                next_attempt_at INTEGER NOT NULL DEFAULT 0,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS sync_operations_device_seq
+                ON sync_operations(device_id, sequence);
+            CREATE INDEX IF NOT EXISTS sync_operations_due
+                ON sync_operations(state, next_attempt_at);
+            CREATE TABLE IF NOT EXISTS sync_meta(
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS sync_inbox(
+                operation_id TEXT PRIMARY KEY,
+                device_id TEXT NOT NULL,
+                received_at INTEGER NOT NULL,
+                payload_hash TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS sync_conflicts(
+                id TEXT PRIMARY KEY,
+                operation_id TEXT NOT NULL,
+                reason TEXT NOT NULL,
+                created_at INTEGER NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS sync_peers(
+                device_id TEXT PRIMARY KEY,
+                last_sequence INTEGER NOT NULL DEFAULT 0,
+                updated_at INTEGER NOT NULL
+            );",
+        )?;
+        Ok(())
+    }
+
+    pub fn enqueue(
+        &self,
+        device_id: &str,
+        entity_type: &str,
+        entity_id: &str,
+        operation: &str,
+        payload: &Value,
+    ) -> Result<SyncOperation, SyncError> {
+        validate_id(device_id, "device_id")?;
+        validate_id(entity_type, "entity_type")?;
+        validate_id(entity_id, "entity_id")?;
+        validate_id(operation, "operation")?;
+        let payload_hash = Self::compute_payload_hash(payload)?;
+        let c = self.conn.lock().expect("sync store mutex poisoned");
+        let seq_key = format!("device_seq:{device_id}");
+        let sequence: i64 = {
+            let current: Option<String> = c
+                .query_row("SELECT value FROM sync_meta WHERE key=?1", params![seq_key], |r| r.get(0))
+                .optional()?;
+            let next = current.and_then(|v| v.parse::<i64>().ok()).unwrap_or(0) + 1;
+            c.execute(
+                "INSERT INTO sync_meta(key,value) VALUES(?1,?2) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                params![seq_key, next.to_string()],
+            )?;
+            next
+        };
+        let t = now();
+        let op = SyncOperation {
+            id: Uuid::new_v4().to_string(),
+            device_id: device_id.to_string(),
+            entity_type: entity_type.to_string(),
+            entity_id: entity_id.to_string(),
+            operation: operation.to_string(),
+            payload: payload.clone(),
+            payload_hash,
+            sequence,
+            state: SyncState::Pending,
+            attempts: 0,
+            next_attempt_at: t,
+            created_at: t,
+            updated_at: t,
+        };
+        c.execute(
+            "INSERT INTO sync_operations(id,device_id,entity_type,entity_id,operation,payload,payload_hash,sequence,state,attempts,next_attempt_at,created_at,updated_at)
+             VALUES(?,?,?,?,?,?,?,?,?,0,?,?,?)",
+            params![
+                op.id, op.device_id, op.entity_type, op.entity_id, op.operation,
+                serde_json::to_string(&op.payload)?, op.payload_hash, op.sequence,
+                op.state.as_str(), op.next_attempt_at, op.created_at, op.updated_at
+            ],
+        )?;
+        Ok(op)
+    }
+
+    pub fn due_batch(&self, at: i64, limit: usize) -> Result<Vec<SyncOperation>, SyncError> {
+        let c = self.conn.lock().expect("sync store mutex poisoned");
+        let n = limit.clamp(1, MAX_BATCH) as i64;
+        let mut stmt = c.prepare(
+            "SELECT id,device_id,entity_type,entity_id,operation,payload,payload_hash,sequence,state,attempts,next_attempt_at,created_at,updated_at
+             FROM sync_operations
+             WHERE state IN ('PENDING','FAILED') AND next_attempt_at<=?1
+             ORDER BY sequence ASC LIMIT ?2",
+        )?;
+        let mut out = Vec::new();
+        for row in stmt.query_map(params![at, n], row_op)? {
+            out.push(row?);
+        }
+        Ok(out)
+    }
+
+    pub fn claim(&self, ids: &[String]) -> Result<usize, SyncError> {
+        let c = self.conn.lock().expect("sync store mutex poisoned");
+        let t = now();
+        let mut n = 0usize;
+        for id in ids {
+            n += c.execute(
+                "UPDATE sync_operations SET state='IN_FLIGHT', updated_at=?1 WHERE id=?2 AND state IN ('PENDING','FAILED')",
+                params![t, id],
+            )?;
+        }
+        Ok(n)
+    }
+
+    pub fn ack(&self, id: &str) -> Result<(), SyncError> {
+        let c = self.conn.lock().expect("sync store mutex poisoned");
+        let n = c.execute(
+            "UPDATE sync_operations SET state='SYNCED', updated_at=?1 WHERE id=?2 AND state='IN_FLIGHT'",
+            params![now(), id],
+        )?;
+        if n == 0 {
+            return Err(SyncError::NotFound);
+        }
+        Ok(())
+    }
+
+    pub fn fail(&self, id: &str, _error: &str) -> Result<(), SyncError> {
+        let c = self.conn.lock().expect("sync store mutex poisoned");
+        let t = now();
+        let n = c.execute(
+            "UPDATE sync_operations
+             SET state='FAILED', attempts=attempts+1,
+                 next_attempt_at=?1 + MIN((1 << MIN(attempts,10)) * 5, ?2),
+                 updated_at=?1
+             WHERE id=?3 AND state IN ('IN_FLIGHT','PENDING')",
+            params![t, MAX_BACKOFF_SECONDS, id],
+        )?;
+        if n == 0 {
+            return Err(SyncError::NotFound);
+        }
+        Ok(())
+    }
+
+    pub fn ingest_remote(&self, op: &SyncOperation) -> Result<bool, SyncError> {
+        let c = self.conn.lock().expect("sync store mutex poisoned");
         let actual = hash_payload(&serde_json::to_string(&op.payload)?);
         if actual != op.payload_hash {
             return Err(SyncError::Validation("payload hash mismatch".into()));
         }
-        let local: Option<String> = c
-            .query_row("SELECT id FROM sync_meta WHERE id=?1 AND state<>'SYNCED'", params![op.id], |r| r.get(0))
+        let local_state: Option<String> = c
+            .query_row(
+                "SELECT state FROM sync_operations WHERE id=?1",
+                params![op.id],
+                |r| r.get(0),
+            )
             .optional()?;
-        if local.is_some() {
-            return Ok(false);
+        if let Some(state) = local_state {
+            if state != "SYNCED" {
+                return Ok(false);
+            }
         }
         let existing: Option<String> = c
             .query_row(
@@ -131,7 +296,7 @@ impl SyncStore {
     pub fn compact_synced(&self, before: i64) -> Result<usize, SyncError> {
         let c = self.conn.lock().expect("sync store mutex poisoned");
         Ok(c.execute(
-            "DELETE FROM sync_operations WHERE state='SYNCED' AND updated_at < ?1",
+            "DELETE FROM sync_operations WHERE state='SYNCED' AND updated_at<?1",
             params![before],
         )?)
     }
@@ -139,8 +304,7 @@ impl SyncStore {
     pub fn get(&self, id: &str) -> Result<SyncOperation, SyncError> {
         let c = self.conn.lock().expect("sync store mutex poisoned");
         c.query_row(
-            "SELECT id, device_id, entity_type, entity_id, operation, payload_json, payload_hash,
-                    sequence, state, attempts, next_attempt_at, created_at, updated_at
+            "SELECT id,device_id,entity_type,entity_id,operation,payload,payload_hash,sequence,state,attempts,next_attempt_at,created_at,updated_at
              FROM sync_operations WHERE id=?1",
             params![id],
             row_op,
@@ -152,40 +316,36 @@ impl SyncStore {
     pub fn pending_count(&self) -> Result<i64, SyncError> {
         let c = self.conn.lock().expect("sync store mutex poisoned");
         Ok(c.query_row(
-            "SELECT COUNT(*) FROM sync_operations
-             WHERE state IN ('PENDING','FAILED','IN_FLIGHT','CONFLICT')",
+            "SELECT COUNT(*) FROM sync_operations WHERE state<>'SYNCED'",
             [],
             |r| r.get(0),
         )?)
     }
 
-    /// Deterministic SHA-256 + standard base64 (matches Postgres encode(..., 'base64')).
     pub fn compute_payload_hash(payload: &Value) -> Result<String, SyncError> {
-        let encoded = serde_json::to_string(payload)?;
-        Ok(hash_payload(&encoded))
+        Ok(hash_payload(&serde_json::to_string(payload)?))
     }
 }
 
 fn row_op(r: &rusqlite::Row<'_>) -> Result<SyncOperation, rusqlite::Error> {
-    let state: String = r.get(8)?;
-    let state = match state.as_str() {
-        "PENDING" => SyncState::Pending,
-        "IN_FLIGHT" => SyncState::InFlight,
-        "SYNCED" => SyncState::Synced,
-        "FAILED" => SyncState::Failed,
-        "CONFLICT" => SyncState::Conflict,
-        _ => SyncState::Failed,
-    };
+    let payload_text: String = r.get(5)?;
+    let state_text: String = r.get(8)?;
     Ok(SyncOperation {
         id: r.get(0)?,
         device_id: r.get(1)?,
         entity_type: r.get(2)?,
         entity_id: r.get(3)?,
         operation: r.get(4)?,
-        payload: serde_json::from_str(&r.get::<_, String>(5)?).unwrap_or(Value::Null),
+        payload: serde_json::from_str(&payload_text).unwrap_or(Value::Null),
         payload_hash: r.get(6)?,
         sequence: r.get(7)?,
-        state,
+        state: match state_text.as_str() {
+            "IN_FLIGHT" => SyncState::InFlight,
+            "SYNCED" => SyncState::Synced,
+            "FAILED" => SyncState::Failed,
+            "CONFLICT" => SyncState::Conflict,
+            _ => SyncState::Pending,
+        },
         attempts: r.get(9)?,
         next_attempt_at: r.get(10)?,
         created_at: r.get(11)?,
@@ -194,8 +354,8 @@ fn row_op(r: &rusqlite::Row<'_>) -> Result<SyncOperation, rusqlite::Error> {
 }
 
 fn validate_id(v: &str, name: &str) -> Result<(), SyncError> {
-    if v.trim().is_empty() || v.len() > 128 {
-        return Err(SyncError::Validation(format!("invalid {name}")));
+    if v.trim().is_empty() {
+        return Err(SyncError::Validation(format!("{name} is required")));
     }
     Ok(())
 }
@@ -207,11 +367,8 @@ fn now() -> i64 {
         .as_secs() as i64
 }
 
-/// Standard base64 (with padding) to match PostgreSQL encode(digest(...), 'base64').
 fn hash_payload(v: &str) -> String {
-    let mut h = Sha256::new();
-    h.update(v.as_bytes());
-    STANDARD.encode(h.finalize())
+    STANDARD.encode(Sha256::digest(v.as_bytes()))
 }
 
 #[cfg(test)]
