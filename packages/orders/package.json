@@ -1,0 +1,9 @@
+{
+  "name": "@masterchef/orders",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
+  "scripts": { "typecheck": "tsc --noEmit", "build": "tsc --noEmit", "lint": "tsc --noEmit", "test": "tsc --noEmit" },
+  "dependencies": { "@masterchef/domain": "workspace:*", "@masterchef/validation": "workspace:*" }
+}
