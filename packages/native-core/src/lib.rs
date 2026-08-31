@@ -1,13 +1,17 @@
 use argon2::{
-    password_hash::{ PasswordHash, PasswordHasher, PasswordVerifier, SaltString },
+    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
 };
-use base64::{ engine::general_purpose::URL_SAFE_NO_PAD, Engine };
-use rand::{ rngs::OsRng, RngCore };
-use rusqlite::{ params, Connection, OptionalExtension };
-use serde::{ Deserialize, Serialize };
-use sha2::{ Digest, Sha256 };
-use std::{ path::Path, sync::Mutex, time::{ SystemTime, UNIX_EPOCH } };
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+use rand::{rngs::OsRng, RngCore};
+use rusqlite::{params, Connection, OptionalExtension};
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use std::{
+    path::Path,
+    sync::Mutex,
+    time::{SystemTime, UNIX_EPOCH},
+};
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -26,14 +30,18 @@ pub enum AuthError {
     AccountInactive,
     #[error("not authorized")]
     Unauthorized,
-    #[error("validation failed: {0}")] Validation(String),
+    #[error("validation failed: {0}")]
+    Validation(String),
     #[error("not initialized")]
     NotInitialized,
     #[error("resource not found")]
     NotFound,
-    #[error("database error")] Database(#[from] rusqlite::Error),
-    #[error("password hashing error: {0}")] PasswordHash(argon2::password_hash::Error),
-    #[error("serialization error")] Serialization(#[from] serde_json::Error),
+    #[error("database error")]
+    Database(#[from] rusqlite::Error),
+    #[error("password hashing error: {0}")]
+    PasswordHash(argon2::password_hash::Error),
+    #[error("serialization error")]
+    Serialization(#[from] serde_json::Error),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -105,7 +113,9 @@ impl AuthStore {
         conn.pragma_update(None, "journal_mode", "WAL")?;
         conn.pragma_update(None, "foreign_keys", "ON")?;
         conn.busy_timeout(std::time::Duration::from_secs(5))?;
-        let store = Self { conn: Mutex::new(conn) };
+        let store = Self {
+            conn: Mutex::new(conn),
+        };
         store.migrate()?;
         Ok(store)
     }
@@ -113,7 +123,9 @@ impl AuthStore {
     pub fn open_in_memory() -> Result<Self, AuthError> {
         let conn = Connection::open_in_memory()?;
         conn.pragma_update(None, "foreign_keys", "ON")?;
-        let store = Self { conn: Mutex::new(conn) };
+        let store = Self {
+            conn: Mutex::new(conn),
+        };
         store.migrate()?;
         Ok(store)
     }
@@ -164,7 +176,7 @@ impl AuthStore {
                 created_at INTEGER NOT NULL
             );
             CREATE INDEX IF NOT EXISTS idx_audit_created_at ON audit_events(created_at DESC);
-        "#
+        "#,
         )?;
         Ok(())
     }
@@ -174,7 +186,7 @@ impl AuthStore {
         username: &str,
         display_name: &str,
         password: &str,
-        device_id: &str
+        device_id: &str,
     ) -> Result<UserSummary, AuthError> {
         validate_username(username)?;
         validate_display_name(display_name)?;
@@ -208,7 +220,7 @@ impl AuthStore {
             Some("USER"),
             Some(&id),
             serde_json::json!({"username": normalize_username(username)}),
-            device_id
+            device_id,
         )?;
         self.get_user(&id)
     }
@@ -217,7 +229,7 @@ impl AuthStore {
         &self,
         username: &str,
         password: &str,
-        device_id: &str
+        device_id: &str,
     ) -> Result<AuthSession, AuthError> {
         validate_username(username)?;
         validate_device(device_id)?;
@@ -243,19 +255,18 @@ impl AuthStore {
                 }
             )
             .optional()?;
-        let Some(
-            (
-                id,
-                display_name,
-                role,
-                status,
-                password_hash,
-                auth_version,
-                failed_attempts,
-                locked_until,
-                created_at,
-            ),
-        ) = row else {
+        let Some((
+            id,
+            display_name,
+            role,
+            status,
+            password_hash,
+            auth_version,
+            failed_attempts,
+            locked_until,
+            created_at,
+        )) = row
+        else {
             return Err(AuthError::InvalidCredentials);
         };
         if locked_until.is_some_and(|until| until > now) {
@@ -267,10 +278,14 @@ impl AuthStore {
         let valid = verify_password(password, &password_hash);
         if !valid {
             let next = failed_attempts + 1;
-            let lock = if next >= MAX_FAILED_LOGINS { Some(now + LOCKOUT_SECONDS) } else { None };
+            let lock = if next >= MAX_FAILED_LOGINS {
+                Some(now + LOCKOUT_SECONDS)
+            } else {
+                None
+            };
             conn.execute(
                 "UPDATE users SET failed_attempts=?1,locked_until=?2,updated_at=?3 WHERE id=?4",
-                params![if lock.is_some() { 0 } else { next }, lock, now, id]
+                params![if lock.is_some() { 0 } else { next }, lock, now, id],
             )?;
             drop(conn);
             self.audit(
@@ -279,19 +294,17 @@ impl AuthStore {
                 Some("USER"),
                 Some(&id),
                 serde_json::json!({"reason":"invalid_credentials"}),
-                device_id
+                device_id,
             )?;
-            return Err(
-                if lock.is_some() {
-                    AuthError::AccountLocked
-                } else {
-                    AuthError::InvalidCredentials
-                }
-            );
+            return Err(if lock.is_some() {
+                AuthError::AccountLocked
+            } else {
+                AuthError::InvalidCredentials
+            });
         }
         conn.execute(
             "UPDATE users SET failed_attempts=0,locked_until=NULL,updated_at=?1 WHERE id=?2",
-            params![now, id]
+            params![now, id],
         )?;
         let mut raw = [0u8; 32];
         OsRng.fill_bytes(&mut raw);
@@ -305,7 +318,7 @@ impl AuthStore {
         )?;
         conn.execute(
             "DELETE FROM sessions WHERE expires_at <= ?1 OR last_seen_at <= ?2",
-            params![now, now - SESSION_IDLE_TTL]
+            params![now, now - SESSION_IDLE_TTL],
         )?;
         drop(conn);
         self.audit(
@@ -314,7 +327,7 @@ impl AuthStore {
             Some("USER"),
             Some(&id),
             serde_json::json!({}),
-            device_id
+            device_id,
         )?;
         Ok(AuthSession {
             token,
@@ -342,7 +355,7 @@ impl AuthStore {
             Some("USER"),
             Some(&user.id),
             serde_json::json!({}),
-            device_id
+            device_id,
         )?;
         Ok(())
     }
@@ -373,19 +386,18 @@ impl AuthStore {
                 }
             )
             .optional()?;
-        let Some(
-            (
-                id,
-                username,
-                display_name,
-                role,
-                status,
-                auth_version,
-                created_at,
-                expires_at,
-                last_seen,
-            ),
-        ) = row else {
+        let Some((
+            id,
+            username,
+            display_name,
+            role,
+            status,
+            auth_version,
+            created_at,
+            expires_at,
+            last_seen,
+        )) = row
+        else {
             return Err(AuthError::Unauthorized);
         };
         if expires_at <= now || last_seen + SESSION_IDLE_TTL <= now {
@@ -398,7 +410,7 @@ impl AuthStore {
         let session_version: i64 = conn.query_row(
             "SELECT auth_version FROM users WHERE id=?1",
             params![id],
-            |r| r.get(0)
+            |r| r.get(0),
         )?;
         if session_version != auth_version {
             conn.execute("DELETE FROM sessions WHERE token_hash=?1", params![hash])?;
@@ -406,9 +418,16 @@ impl AuthStore {
         }
         conn.execute(
             "UPDATE sessions SET last_seen_at=?1 WHERE token_hash=?2",
-            params![now, hash]
+            params![now, hash],
         )?;
-        Ok(UserSummary { id, username, display_name, role, status: UserStatus::Active, created_at })
+        Ok(UserSummary {
+            id,
+            username,
+            display_name,
+            role,
+            status: UserStatus::Active,
+            created_at,
+        })
     }
 
     pub fn list_users(&self, token: &str) -> Result<Vec<UserSummary>, AuthError> {
@@ -418,18 +437,17 @@ impl AuthStore {
         let mut stmt = conn.prepare(
             "SELECT id,username,display_name,role,status,created_at FROM users ORDER BY display_name COLLATE NOCASE"
         )?;
-        let rows = stmt.query_map([], |r|
+        let rows = stmt.query_map([], |r| {
             Ok(UserSummary {
                 id: r.get(0)?,
                 username: r.get(1)?,
                 display_name: r.get(2)?,
                 role: r.get(3)?,
-                status: UserStatus::try_from(r.get::<_, String>(4)?.as_str()).unwrap_or(
-                    UserStatus::Inactive
-                ),
+                status: UserStatus::try_from(r.get::<_, String>(4)?.as_str())
+                    .unwrap_or(UserStatus::Inactive),
                 created_at: r.get(5)?,
             })
-        )?;
+        })?;
         Ok(rows.filter_map(Result::ok).collect())
     }
 
@@ -440,7 +458,7 @@ impl AuthStore {
         display_name: &str,
         role: &str,
         password: &str,
-        device_id: &str
+        device_id: &str,
     ) -> Result<UserSummary, AuthError> {
         let actor = self.authenticate(token)?;
         self.require(&actor, "users.manage")?;
@@ -476,7 +494,7 @@ impl AuthStore {
             Some("USER"),
             Some(&id),
             serde_json::json!({"role":role,"username":normalize_username(username)}),
-            device_id
+            device_id,
         )?;
         self.get_user(&id)
     }
@@ -486,18 +504,20 @@ impl AuthStore {
         token: &str,
         user_id: &str,
         status: UserStatus,
-        device_id: &str
+        device_id: &str,
     ) -> Result<(), AuthError> {
         let actor = self.authenticate(token)?;
         self.require(&actor, "users.manage")?;
         validate_device(device_id)?;
         if actor.id == user_id && status != UserStatus::Active {
-            return Err(AuthError::Validation("CEO cannot disable the current account".into()));
+            return Err(AuthError::Validation(
+                "CEO cannot disable the current account".into(),
+            ));
         }
         let conn = self.conn.lock().expect("auth store mutex poisoned");
         let changed = conn.execute(
             "UPDATE users SET status=?1,auth_version=auth_version+1,updated_at=?2 WHERE id=?3",
-            params![status.as_str(), now(), user_id]
+            params![status.as_str(), now(), user_id],
         )?;
         if changed == 0 {
             return Err(AuthError::NotFound);
@@ -509,7 +529,7 @@ impl AuthStore {
             Some("USER"),
             Some(user_id),
             serde_json::json!({"status":status.as_str()}),
-            device_id
+            device_id,
         )?;
         Ok(())
     }
@@ -519,7 +539,7 @@ impl AuthStore {
         token: &str,
         user_id: &str,
         new_password: &str,
-        device_id: &str
+        device_id: &str,
     ) -> Result<(), AuthError> {
         let actor = self.authenticate(token)?;
         if actor.id != user_id {
@@ -544,7 +564,7 @@ impl AuthStore {
             Some("USER"),
             Some(user_id),
             serde_json::json!({"self_change": actor.id == user_id}),
-            device_id
+            device_id,
         )?;
         Ok(())
     }
@@ -555,14 +575,16 @@ impl AuthStore {
         user_id: &str,
         permission: &str,
         grant: bool,
-        device_id: &str
+        device_id: &str,
     ) -> Result<(), AuthError> {
         let actor = self.authenticate(token)?;
         self.require(&actor, "users.manage")?;
         validate_permission(permission)?;
         validate_device(device_id)?;
         if actor.id == user_id && permission == "system.manage" && !grant {
-            return Err(AuthError::Validation("cannot revoke CEO system authority".into()));
+            return Err(AuthError::Validation(
+                "cannot revoke CEO system authority".into(),
+            ));
         }
         let conn = self.conn.lock().expect("auth store mutex poisoned");
         conn.execute(
@@ -576,7 +598,7 @@ impl AuthStore {
             Some("USER"),
             Some(user_id),
             serde_json::json!({"permission":permission,"effect":if grant{"GRANT"}else{"REVOKE"}}),
-            device_id
+            device_id,
         )?;
         Ok(())
     }
@@ -603,8 +625,7 @@ impl AuthStore {
                 action: r.get(2)?,
                 target_type: r.get(3)?,
                 target_id: r.get(4)?,
-                details: serde_json
-                    ::from_str(&details)
+                details: serde_json::from_str(&details)
                     .unwrap_or(serde_json::json!({"parse_error":true})),
                 device_id: r.get(6)?,
                 created_at: r.get(7)?,
@@ -614,7 +635,11 @@ impl AuthStore {
     }
 
     fn require(&self, actor: &UserSummary, permission: &str) -> Result<(), AuthError> {
-        if self.permission_for(actor, permission) { Ok(()) } else { Err(AuthError::Unauthorized) }
+        if self.permission_for(actor, permission) {
+            Ok(())
+        } else {
+            Err(AuthError::Unauthorized)
+        }
     }
     fn permission_for(&self, actor: &UserSummary, permission: &str) -> bool {
         if actor.role == "CEO" {
@@ -625,7 +650,7 @@ impl AuthStore {
             .query_row(
                 "SELECT effect FROM permission_overrides WHERE user_id=?1 AND permission=?2",
                 params![actor.id, permission],
-                |r| r.get(0)
+                |r| r.get(0),
             )
             .optional()
             .unwrap_or(None);
@@ -641,20 +666,20 @@ impl AuthStore {
         conn.query_row(
             "SELECT id,username,display_name,role,status,created_at FROM users WHERE id=?1",
             params![id],
-            |r|
+            |r| {
                 Ok(UserSummary {
                     id: r.get(0)?,
                     username: r.get(1)?,
                     display_name: r.get(2)?,
                     role: r.get(3)?,
-                    status: UserStatus::try_from(r.get::<_, String>(4)?.as_str()).unwrap_or(
-                        UserStatus::Inactive
-                    ),
+                    status: UserStatus::try_from(r.get::<_, String>(4)?.as_str())
+                        .unwrap_or(UserStatus::Inactive),
                     created_at: r.get(5)?,
                 })
+            },
         )
-            .optional()?
-            .ok_or(AuthError::NotFound)
+        .optional()?
+        .ok_or(AuthError::NotFound)
     }
 
     fn audit(
@@ -664,7 +689,7 @@ impl AuthStore {
         target_type: Option<&str>,
         target_id: Option<&str>,
         details: serde_json::Value,
-        device_id: &str
+        device_id: &str,
     ) -> Result<(), AuthError> {
         let conn = self.conn.lock().expect("auth store mutex poisoned");
         conn.execute(
@@ -686,41 +711,38 @@ impl AuthStore {
 
 fn role_has_permission(role: &str, permission: &str) -> bool {
     match role {
-        "MANAGER" =>
-            matches!(
-                permission,
-                "workers.view" |
-                    "orders.view" |
-                    "orders.create" |
-                    "orders.edit" |
-                    "payments.view" |
-                    "payments.receive" |
-                    "cash.open" |
-                    "cash.close" |
-                    "cash.reconcile" |
-                    "inventory.view" |
-                    "attendance.view" |
-                    "attendance.manage" |
-                    "reports.view" |
-                    "delivery.manage"
-            ),
-        "WAITER" =>
-            matches!(
-                permission,
-                "orders.view" | "orders.create" | "orders.edit" | "payments.receive"
-            ),
+        "MANAGER" => matches!(
+            permission,
+            "workers.view"
+                | "orders.view"
+                | "orders.create"
+                | "orders.edit"
+                | "payments.view"
+                | "payments.receive"
+                | "cash.open"
+                | "cash.close"
+                | "cash.reconcile"
+                | "inventory.view"
+                | "attendance.view"
+                | "attendance.manage"
+                | "reports.view"
+                | "delivery.manage"
+        ),
+        "WAITER" => matches!(
+            permission,
+            "orders.view" | "orders.create" | "orders.edit" | "payments.receive"
+        ),
         "COOK" => permission == "orders.view",
-        "CASHIER" =>
-            matches!(
-                permission,
-                "orders.view" |
-                    "payments.view" |
-                    "payments.receive" |
-                    "payments.refund" |
-                    "cash.open" |
-                    "cash.close" |
-                    "cash.reconcile"
-            ),
+        "CASHIER" => matches!(
+            permission,
+            "orders.view"
+                | "payments.view"
+                | "payments.receive"
+                | "payments.refund"
+                | "cash.open"
+                | "cash.close"
+                | "cash.reconcile"
+        ),
         "STOREKEEPER" => matches!(permission, "inventory.view" | "inventory.issue"),
         "DELIVERY_RIDER" => matches!(permission, "orders.view" | "delivery.manage"),
         _ => false,
@@ -729,37 +751,36 @@ fn role_has_permission(role: &str, permission: &str) -> bool {
 
 fn validate_username(v: &str) -> Result<(), AuthError> {
     let s = v.trim();
-    if
-        !(3..=32).contains(&s.len()) ||
-        !s.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
+    if !(3..=32).contains(&s.len())
+        || !s
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
     {
-        return Err(
-            AuthError::Validation(
-                "username must be 3-32 ASCII letters, numbers, '.', '_' or '-'".into()
-            )
-        );
+        return Err(AuthError::Validation(
+            "username must be 3-32 ASCII letters, numbers, '.', '_' or '-'".into(),
+        ));
     }
     Ok(())
 }
 fn validate_display_name(v: &str) -> Result<(), AuthError> {
     let n = v.trim();
     if !(1..=80).contains(&n.len()) {
-        return Err(AuthError::Validation("display name must be 1-80 characters".into()));
+        return Err(AuthError::Validation(
+            "display name must be 1-80 characters".into(),
+        ));
     }
     Ok(())
 }
 fn validate_password(v: &str) -> Result<(), AuthError> {
-    if
-        !(12..=128).contains(&v.len()) ||
-        !v.chars().any(|c| c.is_ascii_uppercase()) ||
-        !v.chars().any(|c| c.is_ascii_lowercase()) ||
-        !v.chars().any(|c| c.is_ascii_digit())
+    if !(12..=128).contains(&v.len())
+        || !v.chars().any(|c| c.is_ascii_uppercase())
+        || !v.chars().any(|c| c.is_ascii_lowercase())
+        || !v.chars().any(|c| c.is_ascii_digit())
     {
-        return Err(
-            AuthError::Validation(
-                "password must be 12-128 characters and contain upper, lower and numeric characters".into()
-            )
-        );
+        return Err(AuthError::Validation(
+            "password must be 12-128 characters and contain upper, lower and numeric characters"
+                .into(),
+        ));
     }
     Ok(())
 }
@@ -771,22 +792,20 @@ fn validate_device(v: &str) -> Result<(), AuthError> {
     }
 }
 fn validate_role(v: &str) -> Result<(), AuthError> {
-    if
-        matches!(
-            v,
-            "CEO" | "MANAGER" | "WAITER" | "COOK" | "CASHIER" | "STOREKEEPER" | "DELIVERY_RIDER"
-        )
-    {
+    if matches!(
+        v,
+        "CEO" | "MANAGER" | "WAITER" | "COOK" | "CASHIER" | "STOREKEEPER" | "DELIVERY_RIDER"
+    ) {
         Ok(())
     } else {
         Err(AuthError::Validation("invalid worker role".into()))
     }
 }
 fn validate_permission(v: &str) -> Result<(), AuthError> {
-    if
-        v.len() >= 3 &&
-        v.len() <= 80 &&
-        v.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
+    if v.len() >= 3
+        && v.len() <= 80
+        && v.chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
     {
         Ok(())
     } else {
@@ -798,12 +817,19 @@ fn normalize_username(v: &str) -> String {
 }
 fn hash_password(password: &str) -> Result<String, AuthError> {
     let salt = SaltString::generate(&mut OsRng);
-    Ok(Argon2::default().hash_password(password.as_bytes(), &salt).map_err(AuthError::PasswordHash)?.to_string())
+    Ok(Argon2::default()
+        .hash_password(password.as_bytes(), &salt)
+        .map_err(AuthError::PasswordHash)?
+        .to_string())
 }
 fn verify_password(password: &str, hash: &str) -> bool {
     PasswordHash::new(hash)
         .ok()
-        .and_then(|parsed| Argon2::default().verify_password(password.as_bytes(), &parsed).ok())
+        .and_then(|parsed| {
+            Argon2::default()
+                .verify_password(password.as_bytes(), &parsed)
+                .ok()
+        })
         .is_some()
 }
 fn hash_token(token: &str) -> String {
@@ -812,7 +838,10 @@ fn hash_token(token: &str) -> String {
     format!("{:x}", h.finalize())
 }
 fn now() -> i64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs() as i64
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs() as i64
 }
 
 #[cfg(test)]
@@ -835,45 +864,50 @@ mod tests {
     #[test]
     fn weak_password_rejected() {
         let s = setup();
-        assert!(s.bootstrap_ceo("ceo", "CEO", "weak", "device-0001").is_err());
+        assert!(s
+            .bootstrap_ceo("ceo", "CEO", "weak", "device-0001")
+            .is_err());
     }
     #[test]
     fn lockout_after_repeated_failures() {
         let s = setup();
-        s.bootstrap_ceo("ceo", "CEO", "SecurePassword123", "device-0001").unwrap();
+        s.bootstrap_ceo("ceo", "CEO", "SecurePassword123", "device-0001")
+            .unwrap();
         for _ in 0..4 {
-            assert!(
-                matches!(
-                    s.login("ceo", "WrongPassword123", "device-0001"),
-                    Err(AuthError::InvalidCredentials)
-                )
-            );
-        }
-        assert!(
-            matches!(
+            assert!(matches!(
                 s.login("ceo", "WrongPassword123", "device-0001"),
-                Err(AuthError::AccountLocked)
-            )
-        );
+                Err(AuthError::InvalidCredentials)
+            ));
+        }
+        assert!(matches!(
+            s.login("ceo", "WrongPassword123", "device-0001"),
+            Err(AuthError::AccountLocked)
+        ));
     }
     #[test]
     fn password_change_invalidates_old_session() {
         let s = setup();
-        s.bootstrap_ceo("ceo", "CEO", "SecurePassword123", "device-0001").unwrap();
+        s.bootstrap_ceo("ceo", "CEO", "SecurePassword123", "device-0001")
+            .unwrap();
         let session = s.login("ceo", "SecurePassword123", "device-0001").unwrap();
         s.change_password(
             &session.token,
             &session.user.id,
             "NewPassword123",
-            "device-0001"
-        ).unwrap();
-        assert!(matches!(s.authenticate(&session.token), Err(AuthError::Unauthorized)));
+            "device-0001",
+        )
+        .unwrap();
+        assert!(matches!(
+            s.authenticate(&session.token),
+            Err(AuthError::Unauthorized)
+        ));
         assert!(s.login("ceo", "NewPassword123", "device-0001").is_ok());
     }
     #[test]
     fn non_ceo_cannot_escalate_to_ceo() {
         let s = setup();
-        s.bootstrap_ceo("ceo", "CEO", "SecurePassword123", "device-0001").unwrap();
+        s.bootstrap_ceo("ceo", "CEO", "SecurePassword123", "device-0001")
+            .unwrap();
         let ceo = s.login("ceo", "SecurePassword123", "device-0001").unwrap();
         let m = s
             .create_user(
@@ -882,15 +916,22 @@ mod tests {
                 "Manager",
                 "MANAGER",
                 "ManagerPassword123",
-                "device-0001"
+                "device-0001",
             )
             .unwrap();
-        let ms = s.login("manager", "ManagerPassword123", "device-0001").unwrap();
-        assert!(
-            s
-                .create_user(&ms.token, "other", "Other", "CEO", "OtherPassword123", "device-0001")
-                .is_err()
-        );
+        let ms = s
+            .login("manager", "ManagerPassword123", "device-0001")
+            .unwrap();
+        assert!(s
+            .create_user(
+                &ms.token,
+                "other",
+                "Other",
+                "CEO",
+                "OtherPassword123",
+                "device-0001"
+            )
+            .is_err());
         assert_eq!(m.role, "MANAGER");
     }
 }

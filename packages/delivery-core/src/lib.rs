@@ -1,6 +1,10 @@
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
-use std::{path::Path, sync::Mutex, time::{SystemTime, UNIX_EPOCH}};
+use std::{
+    path::Path,
+    sync::Mutex,
+    time::{SystemTime, UNIX_EPOCH},
+};
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -47,34 +51,58 @@ pub struct RiderReconciliation {
     pub settled_minor: i64,
 }
 
-fn now() -> i64 { SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs() as i64 }
+fn now() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs() as i64
+}
 
 fn row_delivery(r: &rusqlite::Row<'_>) -> rusqlite::Result<Delivery> {
     Ok(Delivery {
-        id: r.get(0)?, order_id: r.get(1)?, rider_id: r.get(2)?, status: r.get(3)?,
-        assigned_by: r.get(4)?, collected_minor: r.get(5)?, handover_minor: r.get(6)?,
-        currency: r.get(7)?, notes: r.get(8)?, device_id: r.get(9)?, assigned_at: r.get(10)?,
-        picked_up_at: r.get(11)?, delivered_at: r.get(12)?, handover_at: r.get(13)?,
-        created_at: r.get(14)?, updated_at: r.get(15)?,
+        id: r.get(0)?,
+        order_id: r.get(1)?,
+        rider_id: r.get(2)?,
+        status: r.get(3)?,
+        assigned_by: r.get(4)?,
+        collected_minor: r.get(5)?,
+        handover_minor: r.get(6)?,
+        currency: r.get(7)?,
+        notes: r.get(8)?,
+        device_id: r.get(9)?,
+        assigned_at: r.get(10)?,
+        picked_up_at: r.get(11)?,
+        delivered_at: r.get(12)?,
+        handover_at: r.get(13)?,
+        created_at: r.get(14)?,
+        updated_at: r.get(15)?,
     })
 }
 
 const COLS: &str = "id,order_id,rider_id,status,assigned_by,collected_minor,handover_minor,currency,notes,device_id,assigned_at,picked_up_at,delivered_at,handover_at,created_at,updated_at";
 
-pub struct DeliveryStore { conn: Mutex<Connection> }
+pub struct DeliveryStore {
+    conn: Mutex<Connection>,
+}
 
 impl DeliveryStore {
     pub fn open(path: impl AsRef<Path>) -> Result<Self, DeliveryError> {
         let c = Connection::open(path)?;
         c.pragma_update(None, "journal_mode", "WAL")?;
+        c.pragma_update(None, "synchronous", "NORMAL")?;
+        c.pragma_update(None, "foreign_keys", "ON")?;
         c.busy_timeout(std::time::Duration::from_secs(5))?;
-        let s = Self { conn: Mutex::new(c) };
+        let s = Self {
+            conn: Mutex::new(c),
+        };
         s.migrate()?;
         Ok(s)
     }
     pub fn open_in_memory() -> Result<Self, DeliveryError> {
         let c = Connection::open_in_memory()?;
-        let s = Self { conn: Mutex::new(c) };
+        let s = Self {
+            conn: Mutex::new(c),
+        };
         s.migrate()?;
         Ok(s)
     }
@@ -95,14 +123,33 @@ impl DeliveryStore {
     }
 
     fn get(&self, c: &Connection, id: &str) -> Result<Delivery, DeliveryError> {
-        c.query_row(&format!("SELECT {COLS} FROM deliveries WHERE id=?"), params![id], row_delivery).optional()?.ok_or(DeliveryError::NotFound)
+        c.query_row(
+            &format!("SELECT {COLS} FROM deliveries WHERE id=?"),
+            params![id],
+            row_delivery,
+        )
+        .optional()?
+        .ok_or(DeliveryError::NotFound)
     }
 
-    pub fn assign(&self, order_id: &str, rider_id: &str, notes: Option<&str>, assigned_by: &str, device_id: &str) -> Result<Delivery, DeliveryError> {
-        if order_id.trim().is_empty() || rider_id.trim().is_empty() { return Err(DeliveryError::Validation("order and rider are required".into())); }
+    pub fn assign(
+        &self,
+        order_id: &str,
+        rider_id: &str,
+        notes: Option<&str>,
+        assigned_by: &str,
+        device_id: &str,
+    ) -> Result<Delivery, DeliveryError> {
+        if order_id.trim().is_empty() || rider_id.trim().is_empty() {
+            return Err(DeliveryError::Validation(
+                "order and rider are required".into(),
+            ));
+        }
         let c = self.conn.lock().unwrap();
         let open: Option<String> = c.query_row("SELECT id FROM deliveries WHERE order_id=?1 AND status NOT IN ('CANCELLED','SETTLED')", params![order_id], |r| r.get(0)).optional()?;
-        if open.is_some() { return Err(DeliveryError::DuplicateDelivery); }
+        if open.is_some() {
+            return Err(DeliveryError::DuplicateDelivery);
+        }
         let did = Uuid::new_v4().to_string();
         let t = now();
         c.execute(
@@ -112,49 +159,155 @@ impl DeliveryStore {
         self.get(&c, &did)
     }
 
-    fn transition(&self, id: &str, actor: &str, expect: &str, to: &str, enforce_rider: bool) -> Result<Delivery, DeliveryError> {
+    fn transition(
+        &self,
+        id: &str,
+        actor: &str,
+        expect: &str,
+        to: &str,
+        enforce_rider: bool,
+    ) -> Result<Delivery, DeliveryError> {
         let c = self.conn.lock().unwrap();
         let d = self.get(&c, id)?;
-        if d.status != expect { return Err(DeliveryError::InvalidTransition { from: d.status, to: to.into() }); }
-        if enforce_rider && d.rider_id != actor { return Err(DeliveryError::Forbidden); }
+        if d.status != expect {
+            return Err(DeliveryError::InvalidTransition {
+                from: d.status,
+                to: to.into(),
+            });
+        }
+        if enforce_rider && d.rider_id != actor {
+            return Err(DeliveryError::Forbidden);
+        }
         let t = now();
-        let col = match to { "PICKED_UP" => "picked_up_at", "DELIVERED" => "delivered_at", _ => "handover_at" };
-        c.execute(&format!("UPDATE deliveries SET status=?2,{col}=?3,updated_at=?3 WHERE id=?1"), params![id, to, t])?;
+        let col = match to {
+            "PICKED_UP" => "picked_up_at",
+            "DELIVERED" => "delivered_at",
+            _ => "handover_at",
+        };
+        c.execute(
+            &format!("UPDATE deliveries SET status=?2,{col}=?3,updated_at=?3 WHERE id=?1"),
+            params![id, to, t],
+        )?;
         self.get(&c, id)
     }
 
-    pub fn pickup(&self, id: &str, rider_id: &str) -> Result<Delivery, DeliveryError> { self.transition(id, rider_id, "ASSIGNED", "PICKED_UP", true) }
+    pub fn pickup(&self, id: &str, rider_id: &str) -> Result<Delivery, DeliveryError> {
+        self.transition(id, rider_id, "ASSIGNED", "PICKED_UP", true)
+    }
 
-    pub fn deliver(&self, id: &str, rider_id: &str, collected_minor: i64) -> Result<Delivery, DeliveryError> {
-        if collected_minor < 0 { return Err(DeliveryError::Validation("collected amount must be >= 0".into())); }
-        let d = self.transition(id, rider_id, "PICKED_UP", "DELIVERED", true)?;
-        let c = self.conn.lock().unwrap();
-        c.execute("UPDATE deliveries SET collected_minor=?2 WHERE id=?1", params![id, collected_minor])?;
-        self.get(&c, id).map(|mut x| { x.collected_minor = Some(collected_minor); x })
-            .map(|x| { let _ = d; x })
+    pub fn deliver(
+        &self,
+        id: &str,
+        rider_id: &str,
+        collected_minor: i64,
+    ) -> Result<Delivery, DeliveryError> {
+        if collected_minor < 0 {
+            return Err(DeliveryError::Validation(
+                "collected amount must be >= 0".into(),
+            ));
+        }
+        // Single lock + single transaction: status transition and amount
+        // commit or roll back together.
+        let mut c = self.conn.lock().unwrap();
+        let tx = c.transaction()?;
+        let d = tx
+            .query_row(
+                &format!("SELECT {COLS} FROM deliveries WHERE id=?"),
+                params![id],
+                row_delivery,
+            )
+            .optional()?
+            .ok_or(DeliveryError::NotFound)?;
+        if d.status != "PICKED_UP" {
+            return Err(DeliveryError::InvalidTransition {
+                from: d.status,
+                to: "DELIVERED".into(),
+            });
+        }
+        if d.rider_id != rider_id {
+            return Err(DeliveryError::Forbidden);
+        }
+        let t = now();
+        tx.execute("UPDATE deliveries SET status='DELIVERED',delivered_at=?2,collected_minor=?3,updated_at=?2 WHERE id=?1", params![id, t, collected_minor])?;
+        let out = tx
+            .query_row(
+                &format!("SELECT {COLS} FROM deliveries WHERE id=?"),
+                params![id],
+                row_delivery,
+            )
+            .optional()?
+            .ok_or(DeliveryError::NotFound)?;
+        tx.commit()?;
+        Ok(out)
     }
 
     pub fn reconcile(&self, id: &str, handover_minor: i64) -> Result<Delivery, DeliveryError> {
-        if handover_minor < 0 { return Err(DeliveryError::Validation("handover must be >= 0".into())); }
-        let d = self.transition(id, "", "DELIVERED", "SETTLED", false)?;
-        let c = self.conn.lock().unwrap();
-        c.execute("UPDATE deliveries SET handover_minor=?2 WHERE id=?1", params![id, handover_minor])?;
-        self.get(&c, id).map(|x| { let _ = d; x })
+        if handover_minor < 0 {
+            return Err(DeliveryError::Validation("handover must be >= 0".into()));
+        }
+        // Single lock + single transaction: status transition and handover
+        // amount commit or roll back together.
+        let mut c = self.conn.lock().unwrap();
+        let tx = c.transaction()?;
+        let d = tx
+            .query_row(
+                &format!("SELECT {COLS} FROM deliveries WHERE id=?"),
+                params![id],
+                row_delivery,
+            )
+            .optional()?
+            .ok_or(DeliveryError::NotFound)?;
+        if d.status != "DELIVERED" {
+            return Err(DeliveryError::InvalidTransition {
+                from: d.status,
+                to: "SETTLED".into(),
+            });
+        }
+        let t = now();
+        tx.execute("UPDATE deliveries SET status='SETTLED',handover_at=?2,handover_minor=?3,updated_at=?2 WHERE id=?1", params![id, t, handover_minor])?;
+        let out = tx
+            .query_row(
+                &format!("SELECT {COLS} FROM deliveries WHERE id=?"),
+                params![id],
+                row_delivery,
+            )
+            .optional()?
+            .ok_or(DeliveryError::NotFound)?;
+        tx.commit()?;
+        Ok(out)
     }
 
     pub fn cancel(&self, id: &str) -> Result<Delivery, DeliveryError> {
         let c = self.conn.lock().unwrap();
         let d = self.get(&c, id)?;
-        if d.status == "SETTLED" || d.status == "CANCELLED" { return Err(DeliveryError::InvalidTransition { from: d.status, to: "CANCELLED".into() }); }
-        c.execute("UPDATE deliveries SET status='CANCELLED',updated_at=?2 WHERE id=?1", params![id, now()])?;
+        if d.status == "SETTLED" || d.status == "CANCELLED" {
+            return Err(DeliveryError::InvalidTransition {
+                from: d.status,
+                to: "CANCELLED".into(),
+            });
+        }
+        c.execute(
+            "UPDATE deliveries SET status='CANCELLED',updated_at=?2 WHERE id=?1",
+            params![id, now()],
+        )?;
         self.get(&c, id)
     }
 
-    pub fn list(&self, rider_id: Option<&str>, status: Option<&str>, limit: usize) -> Result<Vec<Delivery>, DeliveryError> {
+    pub fn list(
+        &self,
+        rider_id: Option<&str>,
+        status: Option<&str>,
+        limit: usize,
+    ) -> Result<Vec<Delivery>, DeliveryError> {
         let c = self.conn.lock().unwrap();
         let mut s = c.prepare(&format!("SELECT {COLS} FROM deliveries WHERE (?1 IS NULL OR rider_id=?1) AND (?2 IS NULL OR status=?2) ORDER BY created_at DESC LIMIT ?3"))?;
         let mut o = Vec::new();
-        for r in s.query_map(params![rider_id, status, limit.clamp(1, 500) as i64], row_delivery)? { o.push(r?); }
+        for r in s.query_map(
+            params![rider_id, status, limit.clamp(1, 500) as i64],
+            row_delivery,
+        )? {
+            o.push(r?);
+        }
         Ok(o)
     }
 
@@ -163,7 +316,11 @@ impl DeliveryStore {
         let open: i64 = c.query_row("SELECT COUNT(*) FROM deliveries WHERE rider_id=?1 AND status IN ('ASSIGNED','PICKED_UP')", params![rider_id], |r| r.get(0))?;
         let expected: i64 = c.query_row("SELECT COALESCE(SUM(collected_minor),0) FROM deliveries WHERE rider_id=?1 AND status='DELIVERED'", params![rider_id], |r| r.get(0))?;
         let settled: i64 = c.query_row("SELECT COALESCE(SUM(handover_minor),0) FROM deliveries WHERE rider_id=?1 AND status='SETTLED'", params![rider_id], |r| r.get(0))?;
-        Ok(RiderReconciliation { open_deliveries: open, expected_handover_minor: expected, settled_minor: settled })
+        Ok(RiderReconciliation {
+            open_deliveries: open,
+            expected_handover_minor: expected,
+            settled_minor: settled,
+        })
     }
 }
 
@@ -171,15 +328,24 @@ impl DeliveryStore {
 mod tests {
     use super::*;
 
-    fn store() -> DeliveryStore { DeliveryStore::open_in_memory().unwrap() }
+    fn store() -> DeliveryStore {
+        DeliveryStore::open_in_memory().unwrap()
+    }
 
     #[test]
     fn full_lifecycle_and_reconciliation() {
         let s = store();
-        let d = s.assign("order-1", "rider-1", None, "manager", "dev").unwrap();
+        let d = s
+            .assign("order-1", "rider-1", None, "manager", "dev")
+            .unwrap();
         assert_eq!(d.status, "ASSIGNED");
-        assert!(s.assign("order-1", "rider-2", None, "manager", "dev").is_err());
-        assert!(matches!(s.pickup(&d.id, "rider-2"), Err(DeliveryError::Forbidden)));
+        assert!(s
+            .assign("order-1", "rider-2", None, "manager", "dev")
+            .is_err());
+        assert!(matches!(
+            s.pickup(&d.id, "rider-2"),
+            Err(DeliveryError::Forbidden)
+        ));
         let d = s.pickup(&d.id, "rider-1").unwrap();
         assert_eq!(d.status, "PICKED_UP");
         let d = s.deliver(&d.id, "rider-1", 45000).unwrap();
@@ -197,9 +363,13 @@ mod tests {
     #[test]
     fn cancel_blocks_further_progress() {
         let s = store();
-        let d = s.assign("order-9", "rider-1", None, "manager", "dev").unwrap();
+        let d = s
+            .assign("order-9", "rider-1", None, "manager", "dev")
+            .unwrap();
         s.cancel(&d.id).unwrap();
         assert!(s.pickup(&d.id, "rider-1").is_err());
-        assert!(s.assign("order-9", "rider-1", None, "manager", "dev").is_ok());
+        assert!(s
+            .assign("order-9", "rider-1", None, "manager", "dev")
+            .is_ok());
     }
 }

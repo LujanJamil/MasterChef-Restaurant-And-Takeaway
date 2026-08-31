@@ -3,7 +3,11 @@ use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
-use std::{path::Path, sync::Mutex, time::{SystemTime, UNIX_EPOCH}};
+use std::{
+    path::Path,
+    sync::Mutex,
+    time::{SystemTime, UNIX_EPOCH},
+};
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -158,7 +162,11 @@ impl SyncStore {
         let seq_key = format!("device_seq:{device_id}");
         let sequence: i64 = {
             let current: Option<String> = c
-                .query_row("SELECT value FROM sync_meta WHERE key=?1", params![seq_key], |r| r.get(0))
+                .query_row(
+                    "SELECT value FROM sync_meta WHERE key=?1",
+                    params![seq_key],
+                    |r| r.get(0),
+                )
                 .optional()?;
             let next = current.and_then(|v| v.parse::<i64>().ok()).unwrap_or(0) + 1;
             c.execute(

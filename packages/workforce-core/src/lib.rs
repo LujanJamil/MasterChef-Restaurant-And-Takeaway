@@ -1,30 +1,187 @@
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
-use std::{path::Path, sync::Mutex, time::{SystemTime, UNIX_EPOCH}};
+use std::{
+    path::Path,
+    sync::Mutex,
+    time::{SystemTime, UNIX_EPOCH},
+};
 use thiserror::Error;
 use uuid::Uuid;
 
 #[derive(Debug, Error)]
-pub enum WorkforceError { #[error("database error")] Database(#[from] rusqlite::Error), #[error("validation: {0}")] Validation(String), #[error("not found")] NotFound, #[error("already clocked in")] AlreadyClockedIn, #[error("not clocked in")] NotClockedIn, #[error("conflict")] Conflict }
+pub enum WorkforceError {
+    #[error("database error")]
+    Database(#[from] rusqlite::Error),
+    #[error("validation: {0}")]
+    Validation(String),
+    #[error("not found")]
+    NotFound,
+    #[error("already clocked in")]
+    AlreadyClockedIn,
+    #[error("not clocked in")]
+    NotClockedIn,
+    #[error("conflict")]
+    Conflict,
+}
 
-#[derive(Clone,Debug,Serialize,Deserialize,PartialEq,Eq)] #[serde(rename_all="SCREAMING_SNAKE_CASE")]
-pub enum AttendanceStatus { Open, Closed, Adjusted }
-#[derive(Clone,Debug,Serialize,Deserialize)] pub struct AttendanceRecord { pub id:String,pub worker_id:String,pub device_id:String,pub clock_in_at:i64,pub clock_out_at:Option<i64>,pub break_minutes:i64,pub status:AttendanceStatus,pub notes:Option<String>,pub created_at:i64,pub updated_at:i64 }
-#[derive(Clone,Debug,Serialize,Deserialize)] pub struct AvailabilityRule { pub id:String,pub worker_id:String,pub day_of_week:i64,pub available_from_minute:i64,pub available_to_minute:i64,pub preferred_shift:Option<String>,pub active:bool,pub valid_from:i64,pub valid_to:Option<i64>,pub created_at:i64,pub updated_at:i64 }
-#[derive(Clone,Debug,Serialize,Deserialize)] pub struct Shift { pub id:String,pub worker_id:String,pub role:String,pub shift_type:String,pub starts_at:i64,pub ends_at:i64,pub location:String,pub status:String,pub created_by:String,pub created_at:i64,pub updated_at:i64 }
-#[derive(Clone,Debug,Serialize,Deserialize)] pub struct ShiftSwap { pub id:String,pub shift_id:String,pub from_worker_id:String,pub to_worker_id:String,pub reason:Option<String>,pub status:String,pub requested_by:String,pub approved_by:Option<String>,pub created_at:i64,pub updated_at:i64 }
-#[derive(Clone,Debug,Serialize,Deserialize)] pub struct PayRate { pub id:String,pub worker_id:String,pub role:String,pub shift_type:String,pub rate_minor:i64,pub currency:String,pub effective_from:i64,pub effective_to:Option<i64>,pub created_by:String,pub created_at:i64 }
-#[derive(Clone,Debug,Serialize,Deserialize)] pub struct PayRecord { pub id:String,pub worker_id:String,pub period_start:i64,pub period_end:i64,pub hours_worked:f64,pub rate_minor:i64,pub amount_minor:i64,pub currency:String,pub status:String,pub created_by:String,pub created_at:i64,pub updated_at:i64 }
-#[derive(Clone,Debug,Serialize,Deserialize)] pub struct PayrollAdjustment { pub id:String,pub worker_id:String,pub pay_record_id:Option<String>,pub kind:String,pub amount_minor:i64,pub reason:String,pub created_by:String,pub created_at:i64 }
-#[derive(Clone,Debug,Serialize,Deserialize)] pub struct WorkerAdvance { pub id:String,pub worker_id:String,pub amount_minor:i64,pub currency:String,pub reason:String,pub status:String,pub created_by:String,pub created_at:i64 }
-#[derive(Clone,Debug,Serialize,Deserialize)] pub struct WorkerPayment { pub id:String,pub worker_id:String,pub amount_minor:i64,pub currency:String,pub payment_method:String,pub reference:Option<String>,pub paid_by:String,pub created_at:i64 }
-#[derive(Clone,Debug,Serialize,Deserialize,Default)] pub struct PayrollSummary { pub gross_minor:i64,pub adjustments_minor:i64,pub advances_minor:i64,pub paid_minor:i64,pub balance_minor:i64 }
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum AttendanceStatus {
+    Open,
+    Closed,
+    Adjusted,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AttendanceRecord {
+    pub id: String,
+    pub worker_id: String,
+    pub device_id: String,
+    pub clock_in_at: i64,
+    pub clock_out_at: Option<i64>,
+    pub break_minutes: i64,
+    pub status: AttendanceStatus,
+    pub notes: Option<String>,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AvailabilityRule {
+    pub id: String,
+    pub worker_id: String,
+    pub day_of_week: i64,
+    pub available_from_minute: i64,
+    pub available_to_minute: i64,
+    pub preferred_shift: Option<String>,
+    pub active: bool,
+    pub valid_from: i64,
+    pub valid_to: Option<i64>,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Shift {
+    pub id: String,
+    pub worker_id: String,
+    pub role: String,
+    pub shift_type: String,
+    pub starts_at: i64,
+    pub ends_at: i64,
+    pub location: String,
+    pub status: String,
+    pub created_by: String,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ShiftSwap {
+    pub id: String,
+    pub shift_id: String,
+    pub from_worker_id: String,
+    pub to_worker_id: String,
+    pub reason: Option<String>,
+    pub status: String,
+    pub requested_by: String,
+    pub approved_by: Option<String>,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PayRate {
+    pub id: String,
+    pub worker_id: String,
+    pub role: String,
+    pub shift_type: String,
+    pub rate_minor: i64,
+    pub currency: String,
+    pub effective_from: i64,
+    pub effective_to: Option<i64>,
+    pub created_by: String,
+    pub created_at: i64,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PayRecord {
+    pub id: String,
+    pub worker_id: String,
+    pub period_start: i64,
+    pub period_end: i64,
+    pub hours_worked: f64,
+    pub rate_minor: i64,
+    pub amount_minor: i64,
+    pub currency: String,
+    pub status: String,
+    pub created_by: String,
+    pub created_at: i64,
+    pub updated_at: i64,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PayrollAdjustment {
+    pub id: String,
+    pub worker_id: String,
+    pub pay_record_id: Option<String>,
+    pub kind: String,
+    pub amount_minor: i64,
+    pub reason: String,
+    pub created_by: String,
+    pub created_at: i64,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct WorkerAdvance {
+    pub id: String,
+    pub worker_id: String,
+    pub amount_minor: i64,
+    pub currency: String,
+    pub reason: String,
+    pub status: String,
+    pub created_by: String,
+    pub created_at: i64,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct WorkerPayment {
+    pub id: String,
+    pub worker_id: String,
+    pub amount_minor: i64,
+    pub currency: String,
+    pub payment_method: String,
+    pub reference: Option<String>,
+    pub paid_by: String,
+    pub created_at: i64,
+}
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+pub struct PayrollSummary {
+    pub gross_minor: i64,
+    pub adjustments_minor: i64,
+    pub advances_minor: i64,
+    pub paid_minor: i64,
+    pub balance_minor: i64,
+}
 
-pub struct WorkforceStore { conn:Mutex<Connection> }
+pub struct WorkforceStore {
+    conn: Mutex<Connection>,
+}
 impl WorkforceStore {
- pub fn open(path:impl AsRef<Path>)->Result<Self,WorkforceError>{let c=Connection::open(path)?;c.pragma_update(None,"journal_mode","WAL")?;c.pragma_update(None,"foreign_keys","ON")?;c.busy_timeout(std::time::Duration::from_secs(5))?;let s=Self{conn:Mutex::new(c)};s.migrate()?;Ok(s)}
- pub fn open_in_memory()->Result<Self,WorkforceError>{let c=Connection::open_in_memory()?;c.pragma_update(None,"foreign_keys","ON")?;let s=Self{conn:Mutex::new(c)};s.migrate()?;Ok(s)}
- fn migrate(&self)->Result<(),WorkforceError>{let c=self.conn.lock().unwrap();c.execute_batch(r#"
+    pub fn open(path: impl AsRef<Path>) -> Result<Self, WorkforceError> {
+        let c = Connection::open(path)?;
+        c.pragma_update(None, "journal_mode", "WAL")?;
+        c.pragma_update(None, "foreign_keys", "ON")?;
+        c.busy_timeout(std::time::Duration::from_secs(5))?;
+        let s = Self {
+            conn: Mutex::new(c),
+        };
+        s.migrate()?;
+        Ok(s)
+    }
+    pub fn open_in_memory() -> Result<Self, WorkforceError> {
+        let c = Connection::open_in_memory()?;
+        c.pragma_update(None, "foreign_keys", "ON")?;
+        let s = Self {
+            conn: Mutex::new(c),
+        };
+        s.migrate()?;
+        Ok(s)
+    }
+    fn migrate(&self) -> Result<(), WorkforceError> {
+        let c = self.conn.lock().unwrap();
+        c.execute_batch(r#"
  CREATE TABLE IF NOT EXISTS attendance(id TEXT PRIMARY KEY,worker_id TEXT NOT NULL,device_id TEXT NOT NULL,clock_in_at INTEGER NOT NULL,clock_out_at INTEGER,break_minutes INTEGER NOT NULL DEFAULT 0,status TEXT NOT NULL CHECK(status IN('OPEN','CLOSED','ADJUSTED')),notes TEXT,created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL);
  CREATE UNIQUE INDEX IF NOT EXISTS uq_att_open ON attendance(worker_id) WHERE status='OPEN';
  CREATE INDEX IF NOT EXISTS idx_att_worker ON attendance(worker_id,clock_in_at DESC);
@@ -38,59 +195,716 @@ impl WorkforceStore {
  CREATE TABLE IF NOT EXISTS payroll_adjustments(id TEXT PRIMARY KEY,worker_id TEXT NOT NULL,pay_record_id TEXT,kind TEXT NOT NULL,amount_minor INTEGER NOT NULL CHECK(amount_minor<>0),reason TEXT NOT NULL,created_by TEXT NOT NULL,created_at INTEGER NOT NULL,FOREIGN KEY(pay_record_id) REFERENCES pay_records(id));
  CREATE TABLE IF NOT EXISTS worker_advances(id TEXT PRIMARY KEY,worker_id TEXT NOT NULL,amount_minor INTEGER NOT NULL CHECK(amount_minor>0),currency TEXT NOT NULL DEFAULT 'UGX',reason TEXT NOT NULL,status TEXT NOT NULL CHECK(status IN('OUTSTANDING','SETTLED','VOIDED')),created_by TEXT NOT NULL,created_at INTEGER NOT NULL);
  CREATE TABLE IF NOT EXISTS worker_payments(id TEXT PRIMARY KEY,worker_id TEXT NOT NULL,amount_minor INTEGER NOT NULL CHECK(amount_minor>0),currency TEXT NOT NULL DEFAULT 'UGX',payment_method TEXT NOT NULL CHECK(payment_method IN('CASH','MTN_MOMO','AIRTEL_MONEY','OTHER')),reference TEXT,paid_by TEXT NOT NULL,created_at INTEGER NOT NULL);
- "#)?;Ok(())}
- pub fn clock_in(&self,w:&str,d:&str,n:Option<&str>)->Result<AttendanceRecord,WorkforceError>{id(w,"worker_id")?;id(d,"device_id")?;let c=self.conn.lock().unwrap();let x:Option<String>=c.query_row("SELECT id FROM attendance WHERE worker_id=?1 AND status='OPEN'",params![w],|r|r.get(0)).optional()?;if x.is_some(){return Err(WorkforceError::AlreadyClockedIn)}let t=now();let i=Uuid::new_v4().to_string();c.execute("INSERT INTO attendance(id,worker_id,device_id,clock_in_at,break_minutes,status,notes,created_at,updated_at) VALUES(?,?,?,?,0,'OPEN',?,?,?)",params![i,w,d,t,n,t,t])?;drop(c);self.get_attendance(&i)}
- pub fn clock_out(&self,w:&str,b:i64,n:Option<&str>)->Result<AttendanceRecord,WorkforceError>{id(w,"worker_id")?;if !(0..=1440).contains(&b){return Err(WorkforceError::Validation("invalid break_minutes".into()))}let c=self.conn.lock().unwrap();let i:Option<String>=c.query_row("SELECT id FROM attendance WHERE worker_id=?1 AND status='OPEN' ORDER BY clock_in_at DESC LIMIT 1",params![w],|r|r.get(0)).optional()?;let Some(i)=i else{return Err(WorkforceError::NotClockedIn)};let t=now();c.execute("UPDATE attendance SET clock_out_at=?,break_minutes=?,status='CLOSED',notes=COALESCE(?,notes),updated_at=? WHERE id=?",params![t,b,n,t,i])?;drop(c);self.get_attendance(&i)}
- pub fn get_attendance(&self,i:&str)->Result<AttendanceRecord,WorkforceError>{let c=self.conn.lock().unwrap();c.query_row("SELECT id,worker_id,device_id,clock_in_at,clock_out_at,break_minutes,status,notes,created_at,updated_at FROM attendance WHERE id=?",params![i],row_att).optional()?.ok_or(WorkforceError::NotFound)}
- pub fn list_attendance(&self,w:Option<&str>,limit:usize)->Result<Vec<AttendanceRecord>,WorkforceError>{let c=self.conn.lock().unwrap();let n=limit.clamp(1,500) as i64;let mut o=Vec::new();if let Some(w)=w{let mut s=c.prepare("SELECT id,worker_id,device_id,clock_in_at,clock_out_at,break_minutes,status,notes,created_at,updated_at FROM attendance WHERE worker_id=? ORDER BY clock_in_at DESC LIMIT ?")?;for r in s.query_map(params![w,n],row_att)?{o.push(r?)}}else{let mut s=c.prepare("SELECT id,worker_id,device_id,clock_in_at,clock_out_at,break_minutes,status,notes,created_at,updated_at FROM attendance ORDER BY clock_in_at DESC LIMIT ?")?;for r in s.query_map(params![n],row_att)?{o.push(r?)}}Ok(o)}
- pub fn open_attendance(&self,w:&str)->Result<Option<AttendanceRecord>,WorkforceError>{let c=self.conn.lock().unwrap();let i:Option<String>=c.query_row("SELECT id FROM attendance WHERE worker_id=? AND status='OPEN'",params![w],|r|r.get(0)).optional()?;drop(c);i.map(|x|self.get_attendance(&x)).transpose()}
- pub fn set_availability(&self,w:&str,day:i64,from:i64,to:i64,pref:Option<&str>,vf:i64,vt:Option<i64>,by:&str)->Result<AvailabilityRule,WorkforceError>{id(w,"worker_id")?;id(by,"created_by")?;if !(0..=6).contains(&day)||from<0||to>1440||to<=from||vt.map_or(false,|x|x<=vf){return Err(WorkforceError::Validation("invalid availability".into()))}let t=now();let i=Uuid::new_v4().to_string();let c=self.conn.lock().unwrap();c.execute("INSERT INTO availability(id,worker_id,day_of_week,available_from_minute,available_to_minute,preferred_shift,active,valid_from,valid_to,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",params![i,w,day,from,to,pref,1,vf,vt,t,t])?;drop(c);self.get_availability(&i)}
- pub fn get_availability(&self,i:&str)->Result<AvailabilityRule,WorkforceError>{let c=self.conn.lock().unwrap();c.query_row("SELECT id,worker_id,day_of_week,available_from_minute,available_to_minute,preferred_shift,active,valid_from,valid_to,created_at,updated_at FROM availability WHERE id=?",params![i],row_av).optional()?.ok_or(WorkforceError::NotFound)}
- pub fn list_availability(&self,w:&str)->Result<Vec<AvailabilityRule>,WorkforceError>{let c=self.conn.lock().unwrap();let mut s=c.prepare("SELECT id,worker_id,day_of_week,available_from_minute,available_to_minute,preferred_shift,active,valid_from,valid_to,created_at,updated_at FROM availability WHERE worker_id=? ORDER BY day_of_week,available_from_minute")?;let mut o=Vec::new();for r in s.query_map(params![w],row_av)?{o.push(r?)}Ok(o)}
- pub fn create_shift(&self,w:&str,role:&str,st:i64,en:i64,loc:&str,by:&str)->Result<Shift,WorkforceError>{self.create_shift_typed(w,role,"CUSTOM",st,en,loc,by)}
- pub fn create_shift_typed(&self,w:&str,role:&str,ty:&str,st:i64,en:i64,loc:&str,by:&str)->Result<Shift,WorkforceError>{for (v,n) in [(w,"worker_id"),(role,"role"),(loc,"location"),(by,"created_by")]{id(v,n)?}if !matches!(ty,"DAY"|"NIGHT"|"CUSTOM")||en<=st{return Err(WorkforceError::Validation("invalid shift".into()))}let t=now();let i=Uuid::new_v4().to_string();let c=self.conn.lock().unwrap();c.execute("INSERT INTO shifts(id,worker_id,role,shift_type,starts_at,ends_at,location,status,created_by,created_at,updated_at) VALUES(?,?,?,?,?,?,?,'SCHEDULED',?,?,?)",params![i,w,role,ty,st,en,loc,by,t,t])?;drop(c);self.get_shift(&i)}
- pub fn get_shift(&self,i:&str)->Result<Shift,WorkforceError>{let c=self.conn.lock().unwrap();c.query_row("SELECT id,worker_id,role,shift_type,starts_at,ends_at,location,status,created_by,created_at,updated_at FROM shifts WHERE id=?",params![i],row_shift).optional()?.ok_or(WorkforceError::NotFound)}
- pub fn list_shifts(&self,w:Option<&str>,from:i64,to:i64,limit:usize)->Result<Vec<Shift>,WorkforceError>{let c=self.conn.lock().unwrap();let n=limit.clamp(1,500) as i64;let mut o=Vec::new();if let Some(w)=w{let mut s=c.prepare("SELECT id,worker_id,role,shift_type,starts_at,ends_at,location,status,created_by,created_at,updated_at FROM shifts WHERE worker_id=? AND starts_at>=? AND starts_at<? ORDER BY starts_at LIMIT ?")?;for r in s.query_map(params![w,from,to,n],row_shift)?{o.push(r?)}}else{let mut s=c.prepare("SELECT id,worker_id,role,shift_type,starts_at,ends_at,location,status,created_by,created_at,updated_at FROM shifts WHERE starts_at>=? AND starts_at<? ORDER BY starts_at LIMIT ?")?;for r in s.query_map(params![from,to,n],row_shift)?{o.push(r?)}}Ok(o)}
- pub fn mark_shift_status(&self,i:&str,status:&str)->Result<Shift,WorkforceError>{if !matches!(status,"SCHEDULED"|"PRESENT"|"ABSENT"|"EXCUSED"|"CANCELLED"|"REPLACED"|"COMPLETED"){return Err(WorkforceError::Validation("invalid status".into()))}let c=self.conn.lock().unwrap();let n=c.execute("UPDATE shifts SET status=?,updated_at=? WHERE id=?",params![status,now(),i])?;if n==0{return Err(WorkforceError::NotFound)}drop(c);self.get_shift(i)}
- pub fn request_shift_swap(&self,shift:&str,to:&str,by:&str,reason:Option<&str>)->Result<ShiftSwap,WorkforceError>{id(shift,"shift_id")?;id(to,"to_worker_id")?;id(by,"requested_by")?;let s=self.get_shift(shift)?;if s.worker_id==to{return Err(WorkforceError::Validation("replacement must differ".into()))}let t=now();let i=Uuid::new_v4().to_string();let c=self.conn.lock().unwrap();c.execute("INSERT INTO shift_swaps(id,shift_id,from_worker_id,to_worker_id,reason,status,requested_by,created_at,updated_at) VALUES(?,?,?,?,?,'REQUESTED',?,?,?)",params![i,shift,s.worker_id,to,reason,by,t,t])?;drop(c);self.get_swap(&i)}
- pub fn approve_shift_swap(&self,i:&str,by:&str)->Result<ShiftSwap,WorkforceError>{id(by,"approved_by")?;let sw=self.get_swap(i)?;if sw.status!="REQUESTED"{return Err(WorkforceError::Conflict)}let mut c = self.conn.lock().unwrap();let tx=c.transaction()?;tx.execute("UPDATE shift_swaps SET status='APPROVED',approved_by=?,updated_at=? WHERE id=? AND status='REQUESTED'",params![by,now(),i])?;tx.execute("UPDATE shifts SET worker_id=?,status='SCHEDULED',updated_at=? WHERE id=?",params![sw.to_worker_id,now(),sw.shift_id])?;tx.commit()?;drop(c);self.get_swap(i)}
- pub fn get_swap(&self,i:&str)->Result<ShiftSwap,WorkforceError>{let c=self.conn.lock().unwrap();c.query_row("SELECT id,shift_id,from_worker_id,to_worker_id,reason,status,requested_by,approved_by,created_at,updated_at FROM shift_swaps WHERE id=?",params![i],row_swap).optional()?.ok_or(WorkforceError::NotFound)}
- pub fn list_swaps(&self,w:Option<&str>,status:Option<&str>,limit:usize)->Result<Vec<ShiftSwap>,WorkforceError>{let c=self.conn.lock().unwrap();let n=limit.clamp(1,500) as i64;let mut o=Vec::new();let mut s=c.prepare("SELECT id,shift_id,from_worker_id,to_worker_id,reason,status,requested_by,approved_by,created_at,updated_at FROM shift_swaps WHERE (?1 IS NULL OR from_worker_id=?1 OR to_worker_id=?1) AND (?2 IS NULL OR status=?2) ORDER BY created_at DESC LIMIT ?3")?;for r in s.query_map(params![w,status,n],row_swap)?{o.push(r?)}Ok(o)}
- pub fn set_pay_rate(&self,w:&str,role:&str,ty:&str,rate:i64,currency:&str,effective:i64,by:&str)->Result<PayRate,WorkforceError>{for (v,n) in [(w,"worker_id"),(role,"role"),(currency,"currency"),(by,"created_by")]{id(v,n)?}if rate<0||!matches!(ty,"DAY"|"NIGHT"|"CUSTOM"){return Err(WorkforceError::Validation("invalid pay rate".into()))}let t=now();let i=Uuid::new_v4().to_string();let c=self.conn.lock().unwrap();c.execute("UPDATE pay_rates SET effective_to=? WHERE worker_id=? AND shift_type=? AND effective_to IS NULL AND effective_from<?",params![effective,w,ty,effective])?;c.execute("INSERT INTO pay_rates(id,worker_id,role,shift_type,rate_minor,currency,effective_from,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?)",params![i,w,role,ty,rate,currency,effective,by,t])?;drop(c);self.get_rate(&i)}
- pub fn get_rate(&self,i:&str)->Result<PayRate,WorkforceError>{let c=self.conn.lock().unwrap();c.query_row("SELECT id,worker_id,role,shift_type,rate_minor,currency,effective_from,effective_to,created_by,created_at FROM pay_rates WHERE id=?",params![i],row_rate).optional()?.ok_or(WorkforceError::NotFound)}
- pub fn rate_at(&self,w:&str,ty:&str,at:i64)->Result<Option<PayRate>,WorkforceError>{let c=self.conn.lock().unwrap();Ok(c.query_row("SELECT id,worker_id,role,shift_type,rate_minor,currency,effective_from,effective_to,created_by,created_at FROM pay_rates WHERE worker_id=? AND shift_type=? AND effective_from<=? AND (effective_to IS NULL OR effective_to>?) ORDER BY effective_from DESC LIMIT 1",params![w,ty,at,at],row_rate).optional()?)}
- pub fn create_pay_record(&self,w:&str,ps:i64,pe:i64,h:f64,rate:i64,by:&str)->Result<PayRecord,WorkforceError>{id(w,"worker_id")?;id(by,"created_by")?;if pe<=ps||!h.is_finite()||h<0.0||rate<0{return Err(WorkforceError::Validation("invalid pay record".into()))}let amt=(h*rate as f64).round() as i64;let t=now();let i=Uuid::new_v4().to_string();let c=self.conn.lock().unwrap();c.execute("INSERT INTO pay_records(id,worker_id,period_start,period_end,hours_worked,rate_minor,amount_minor,currency,status,created_by,created_at,updated_at) VALUES(?,?,?,?,?,?,?,'UGX','DRAFT',?,?,?)",params![i,w,ps,pe,h,rate,amt,by,t,t])?;drop(c);self.get_pay(&i)}
- pub fn create_shift_pay(&self,w:&str,shift:&str,by:&str)->Result<PayRecord,WorkforceError>{let sh=self.get_shift(shift)?;if sh.worker_id!=w{return Err(WorkforceError::Conflict)}let a=self.attendance_overlapping(w,sh.starts_at,sh.ends_at)?;let h=a.iter().map(worked_hours).sum();let r=self.rate_at(w,&sh.shift_type,sh.starts_at)?.ok_or_else(||WorkforceError::Validation("no effective pay rate".into()))?;self.create_pay_record(w,sh.starts_at,sh.ends_at,h,r.rate_minor,by)}
- pub fn approve_pay(&self,i:&str)->Result<PayRecord,WorkforceError>{let c=self.conn.lock().unwrap();let n=c.execute("UPDATE pay_records SET status='APPROVED',updated_at=? WHERE id=? AND status='DRAFT'",params![now(),i])?;if n==0{return Err(WorkforceError::Conflict)}drop(c);self.get_pay(i)}
- pub fn mark_pay_paid(&self,i:&str)->Result<PayRecord,WorkforceError>{let c=self.conn.lock().unwrap();let n=c.execute("UPDATE pay_records SET status='PAID',updated_at=? WHERE id=? AND status='APPROVED'",params![now(),i])?;if n==0{return Err(WorkforceError::Conflict)}drop(c);self.get_pay(i)}
- pub fn get_pay(&self,i:&str)->Result<PayRecord,WorkforceError>{let c=self.conn.lock().unwrap();c.query_row("SELECT id,worker_id,period_start,period_end,hours_worked,rate_minor,amount_minor,currency,status,created_by,created_at,updated_at FROM pay_records WHERE id=?",params![i],row_pay).optional()?.ok_or(WorkforceError::NotFound)}
- pub fn list_pay(&self,w:Option<&str>,limit:usize)->Result<Vec<PayRecord>,WorkforceError>{let c=self.conn.lock().unwrap();let n=limit.clamp(1,500) as i64;let mut o=Vec::new();if let Some(w)=w{let mut s=c.prepare("SELECT id,worker_id,period_start,period_end,hours_worked,rate_minor,amount_minor,currency,status,created_by,created_at,updated_at FROM pay_records WHERE worker_id=? ORDER BY period_start DESC LIMIT ?")?;for r in s.query_map(params![w,n],row_pay)?{o.push(r?)}}else{let mut s=c.prepare("SELECT id,worker_id,period_start,period_end,hours_worked,rate_minor,amount_minor,currency,status,created_by,created_at,updated_at FROM pay_records ORDER BY period_start DESC LIMIT ?")?;for r in s.query_map(params![n],row_pay)?{o.push(r?)}}Ok(o)}
- pub fn add_adjustment(&self,w:&str,pay:Option<&str>,kind:&str,amt:i64,reason:&str,by:&str)->Result<PayrollAdjustment,WorkforceError>{id(w,"worker_id")?;id(kind,"kind")?;id(by,"created_by")?;if amt==0||reason.trim().is_empty(){return Err(WorkforceError::Validation("invalid adjustment".into()))}let t=now();let i=Uuid::new_v4().to_string();let c=self.conn.lock().unwrap();c.execute("INSERT INTO payroll_adjustments(id,worker_id,pay_record_id,kind,amount_minor,reason,created_by,created_at) VALUES(?,?,?,?,?,?,?,?)",params![i,w,pay,kind,amt,reason,by,t])?;drop(c);self.get_adjustment(&i)}
- pub fn get_adjustment(&self,i:&str)->Result<PayrollAdjustment,WorkforceError>{let c=self.conn.lock().unwrap();c.query_row("SELECT id,worker_id,pay_record_id,kind,amount_minor,reason,created_by,created_at FROM payroll_adjustments WHERE id=?",params![i],row_adj).optional()?.ok_or(WorkforceError::NotFound)}
- pub fn issue_advance(&self,w:&str,amt:i64,reason:&str,by:&str)->Result<WorkerAdvance,WorkforceError>{id(w,"worker_id")?;id(by,"created_by")?;if amt<=0||reason.trim().is_empty(){return Err(WorkforceError::Validation("invalid advance".into()))}let t=now();let i=Uuid::new_v4().to_string();let c=self.conn.lock().unwrap();c.execute("INSERT INTO worker_advances(id,worker_id,amount_minor,currency,reason,status,created_by,created_at) VALUES(?,?,?,'UGX',?,'OUTSTANDING',?,?)",params![i,w,amt,reason,by,t])?;drop(c);self.get_advance(&i)}
- pub fn get_advance(&self,i:&str)->Result<WorkerAdvance,WorkforceError>{let c=self.conn.lock().unwrap();c.query_row("SELECT id,worker_id,amount_minor,currency,reason,status,created_by,created_at FROM worker_advances WHERE id=?",params![i],row_adv).optional()?.ok_or(WorkforceError::NotFound)}
- pub fn record_payment(&self,w:&str,amt:i64,method:&str,refn:Option<&str>,by:&str)->Result<WorkerPayment,WorkforceError>{id(w,"worker_id")?;id(by,"paid_by")?;if amt<=0||!matches!(method,"CASH"|"MTN_MOMO"|"AIRTEL_MONEY"|"OTHER"){return Err(WorkforceError::Validation("invalid payment".into()))}let t=now();let i=Uuid::new_v4().to_string();let c=self.conn.lock().unwrap();c.execute("INSERT INTO worker_payments(id,worker_id,amount_minor,currency,payment_method,reference,paid_by,created_at) VALUES(?,?,?,'UGX',?,?,?,?)",params![i,w,amt,method,refn,by,t])?;drop(c);self.get_payment(&i)}
- pub fn get_payment(&self,i:&str)->Result<WorkerPayment,WorkforceError>{let c=self.conn.lock().unwrap();c.query_row("SELECT id,worker_id,amount_minor,currency,payment_method,reference,paid_by,created_at FROM worker_payments WHERE id=?",params![i],row_payment).optional()?.ok_or(WorkforceError::NotFound)}
- pub fn payroll_summary(&self,w:&str)->Result<PayrollSummary,WorkforceError>{let c=self.conn.lock().unwrap();let g:i64=c.query_row("SELECT COALESCE(SUM(amount_minor),0) FROM pay_records WHERE worker_id=? AND status<>'VOIDED'",params![w],|r|r.get(0))?;let a:i64=c.query_row("SELECT COALESCE(SUM(amount_minor),0) FROM payroll_adjustments WHERE worker_id=?",params![w],|r|r.get(0))?;let v:i64=c.query_row("SELECT COALESCE(SUM(amount_minor),0) FROM worker_advances WHERE worker_id=? AND status='OUTSTANDING'",params![w],|r|r.get(0))?;let p:i64=c.query_row("SELECT COALESCE(SUM(amount_minor),0) FROM worker_payments WHERE worker_id=?",params![w],|r|r.get(0))?;Ok(PayrollSummary{gross_minor:g,adjustments_minor:a,advances_minor:v,paid_minor:p,balance_minor:g+a-v-p})}
- fn attendance_overlapping(&self,w:&str,from:i64,to:i64)->Result<Vec<AttendanceRecord>,WorkforceError>{let c=self.conn.lock().unwrap();let mut s=c.prepare("SELECT id,worker_id,device_id,clock_in_at,clock_out_at,break_minutes,status,notes,created_at,updated_at FROM attendance WHERE worker_id=? AND status IN('CLOSED','ADJUSTED') AND clock_out_at IS NOT NULL AND clock_out_at>? AND clock_in_at<?")?;let mut o=Vec::new();for r in s.query_map(params![w,from,to],row_att)?{o.push(r?)}Ok(o)}
- pub fn hours_in_period(&self,w:&str,from:i64,to:i64)->Result<f64,WorkforceError>{Ok(self.attendance_overlapping(w,from,to)?.iter().map(worked_hours).sum())}
+ "#)?;
+        Ok(())
+    }
+    pub fn clock_in(
+        &self,
+        w: &str,
+        d: &str,
+        n: Option<&str>,
+    ) -> Result<AttendanceRecord, WorkforceError> {
+        id(w, "worker_id")?;
+        id(d, "device_id")?;
+        let c = self.conn.lock().unwrap();
+        let x: Option<String> = c
+            .query_row(
+                "SELECT id FROM attendance WHERE worker_id=?1 AND status='OPEN'",
+                params![w],
+                |r| r.get(0),
+            )
+            .optional()?;
+        if x.is_some() {
+            return Err(WorkforceError::AlreadyClockedIn);
+        }
+        let t = now();
+        let i = Uuid::new_v4().to_string();
+        c.execute("INSERT INTO attendance(id,worker_id,device_id,clock_in_at,break_minutes,status,notes,created_at,updated_at) VALUES(?,?,?,?,0,'OPEN',?,?,?)",params![i,w,d,t,n,t,t])?;
+        drop(c);
+        self.get_attendance(&i)
+    }
+    pub fn clock_out(
+        &self,
+        w: &str,
+        b: i64,
+        n: Option<&str>,
+    ) -> Result<AttendanceRecord, WorkforceError> {
+        id(w, "worker_id")?;
+        if !(0..=1440).contains(&b) {
+            return Err(WorkforceError::Validation("invalid break_minutes".into()));
+        }
+        let c = self.conn.lock().unwrap();
+        let i:Option<String>=c.query_row("SELECT id FROM attendance WHERE worker_id=?1 AND status='OPEN' ORDER BY clock_in_at DESC LIMIT 1",params![w],|r|r.get(0)).optional()?;
+        let Some(i) = i else {
+            return Err(WorkforceError::NotClockedIn);
+        };
+        let t = now();
+        c.execute("UPDATE attendance SET clock_out_at=?,break_minutes=?,status='CLOSED',notes=COALESCE(?,notes),updated_at=? WHERE id=?",params![t,b,n,t,i])?;
+        drop(c);
+        self.get_attendance(&i)
+    }
+    pub fn get_attendance(&self, i: &str) -> Result<AttendanceRecord, WorkforceError> {
+        let c = self.conn.lock().unwrap();
+        c.query_row("SELECT id,worker_id,device_id,clock_in_at,clock_out_at,break_minutes,status,notes,created_at,updated_at FROM attendance WHERE id=?",params![i],row_att).optional()?.ok_or(WorkforceError::NotFound)
+    }
+    pub fn list_attendance(
+        &self,
+        w: Option<&str>,
+        limit: usize,
+    ) -> Result<Vec<AttendanceRecord>, WorkforceError> {
+        let c = self.conn.lock().unwrap();
+        let n = limit.clamp(1, 500) as i64;
+        let mut o = Vec::new();
+        if let Some(w) = w {
+            let mut s=c.prepare("SELECT id,worker_id,device_id,clock_in_at,clock_out_at,break_minutes,status,notes,created_at,updated_at FROM attendance WHERE worker_id=? ORDER BY clock_in_at DESC LIMIT ?")?;
+            for r in s.query_map(params![w, n], row_att)? {
+                o.push(r?)
+            }
+        } else {
+            let mut s=c.prepare("SELECT id,worker_id,device_id,clock_in_at,clock_out_at,break_minutes,status,notes,created_at,updated_at FROM attendance ORDER BY clock_in_at DESC LIMIT ?")?;
+            for r in s.query_map(params![n], row_att)? {
+                o.push(r?)
+            }
+        }
+        Ok(o)
+    }
+    pub fn open_attendance(&self, w: &str) -> Result<Option<AttendanceRecord>, WorkforceError> {
+        let c = self.conn.lock().unwrap();
+        let i: Option<String> = c
+            .query_row(
+                "SELECT id FROM attendance WHERE worker_id=? AND status='OPEN'",
+                params![w],
+                |r| r.get(0),
+            )
+            .optional()?;
+        drop(c);
+        i.map(|x| self.get_attendance(&x)).transpose()
+    }
+    pub fn set_availability(
+        &self,
+        w: &str,
+        day: i64,
+        from: i64,
+        to: i64,
+        pref: Option<&str>,
+        vf: i64,
+        vt: Option<i64>,
+        by: &str,
+    ) -> Result<AvailabilityRule, WorkforceError> {
+        id(w, "worker_id")?;
+        id(by, "created_by")?;
+        if !(0..=6).contains(&day)
+            || from < 0
+            || to > 1440
+            || to <= from
+            || vt.map_or(false, |x| x <= vf)
+        {
+            return Err(WorkforceError::Validation("invalid availability".into()));
+        }
+        let t = now();
+        let i = Uuid::new_v4().to_string();
+        let c = self.conn.lock().unwrap();
+        c.execute("INSERT INTO availability(id,worker_id,day_of_week,available_from_minute,available_to_minute,preferred_shift,active,valid_from,valid_to,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)",params![i,w,day,from,to,pref,1,vf,vt,t,t])?;
+        drop(c);
+        self.get_availability(&i)
+    }
+    pub fn get_availability(&self, i: &str) -> Result<AvailabilityRule, WorkforceError> {
+        let c = self.conn.lock().unwrap();
+        c.query_row("SELECT id,worker_id,day_of_week,available_from_minute,available_to_minute,preferred_shift,active,valid_from,valid_to,created_at,updated_at FROM availability WHERE id=?",params![i],row_av).optional()?.ok_or(WorkforceError::NotFound)
+    }
+    pub fn list_availability(&self, w: &str) -> Result<Vec<AvailabilityRule>, WorkforceError> {
+        let c = self.conn.lock().unwrap();
+        let mut s=c.prepare("SELECT id,worker_id,day_of_week,available_from_minute,available_to_minute,preferred_shift,active,valid_from,valid_to,created_at,updated_at FROM availability WHERE worker_id=? ORDER BY day_of_week,available_from_minute")?;
+        let mut o = Vec::new();
+        for r in s.query_map(params![w], row_av)? {
+            o.push(r?)
+        }
+        Ok(o)
+    }
+    pub fn create_shift(
+        &self,
+        w: &str,
+        role: &str,
+        st: i64,
+        en: i64,
+        loc: &str,
+        by: &str,
+    ) -> Result<Shift, WorkforceError> {
+        self.create_shift_typed(w, role, "CUSTOM", st, en, loc, by)
+    }
+    pub fn create_shift_typed(
+        &self,
+        w: &str,
+        role: &str,
+        ty: &str,
+        st: i64,
+        en: i64,
+        loc: &str,
+        by: &str,
+    ) -> Result<Shift, WorkforceError> {
+        for (v, n) in [
+            (w, "worker_id"),
+            (role, "role"),
+            (loc, "location"),
+            (by, "created_by"),
+        ] {
+            id(v, n)?
+        }
+        if !matches!(ty, "DAY" | "NIGHT" | "CUSTOM") || en <= st {
+            return Err(WorkforceError::Validation("invalid shift".into()));
+        }
+        let t = now();
+        let i = Uuid::new_v4().to_string();
+        let c = self.conn.lock().unwrap();
+        c.execute("INSERT INTO shifts(id,worker_id,role,shift_type,starts_at,ends_at,location,status,created_by,created_at,updated_at) VALUES(?,?,?,?,?,?,?,'SCHEDULED',?,?,?)",params![i,w,role,ty,st,en,loc,by,t,t])?;
+        drop(c);
+        self.get_shift(&i)
+    }
+    pub fn get_shift(&self, i: &str) -> Result<Shift, WorkforceError> {
+        let c = self.conn.lock().unwrap();
+        c.query_row("SELECT id,worker_id,role,shift_type,starts_at,ends_at,location,status,created_by,created_at,updated_at FROM shifts WHERE id=?",params![i],row_shift).optional()?.ok_or(WorkforceError::NotFound)
+    }
+    pub fn list_shifts(
+        &self,
+        w: Option<&str>,
+        from: i64,
+        to: i64,
+        limit: usize,
+    ) -> Result<Vec<Shift>, WorkforceError> {
+        let c = self.conn.lock().unwrap();
+        let n = limit.clamp(1, 500) as i64;
+        let mut o = Vec::new();
+        if let Some(w) = w {
+            let mut s=c.prepare("SELECT id,worker_id,role,shift_type,starts_at,ends_at,location,status,created_by,created_at,updated_at FROM shifts WHERE worker_id=? AND starts_at>=? AND starts_at<? ORDER BY starts_at LIMIT ?")?;
+            for r in s.query_map(params![w, from, to, n], row_shift)? {
+                o.push(r?)
+            }
+        } else {
+            let mut s=c.prepare("SELECT id,worker_id,role,shift_type,starts_at,ends_at,location,status,created_by,created_at,updated_at FROM shifts WHERE starts_at>=? AND starts_at<? ORDER BY starts_at LIMIT ?")?;
+            for r in s.query_map(params![from, to, n], row_shift)? {
+                o.push(r?)
+            }
+        }
+        Ok(o)
+    }
+    pub fn mark_shift_status(&self, i: &str, status: &str) -> Result<Shift, WorkforceError> {
+        if !matches!(
+            status,
+            "SCHEDULED" | "PRESENT" | "ABSENT" | "EXCUSED" | "CANCELLED" | "REPLACED" | "COMPLETED"
+        ) {
+            return Err(WorkforceError::Validation("invalid status".into()));
+        }
+        let c = self.conn.lock().unwrap();
+        let n = c.execute(
+            "UPDATE shifts SET status=?,updated_at=? WHERE id=?",
+            params![status, now(), i],
+        )?;
+        if n == 0 {
+            return Err(WorkforceError::NotFound);
+        }
+        drop(c);
+        self.get_shift(i)
+    }
+    pub fn request_shift_swap(
+        &self,
+        shift: &str,
+        to: &str,
+        by: &str,
+        reason: Option<&str>,
+    ) -> Result<ShiftSwap, WorkforceError> {
+        id(shift, "shift_id")?;
+        id(to, "to_worker_id")?;
+        id(by, "requested_by")?;
+        let s = self.get_shift(shift)?;
+        if s.worker_id == to {
+            return Err(WorkforceError::Validation("replacement must differ".into()));
+        }
+        let t = now();
+        let i = Uuid::new_v4().to_string();
+        let c = self.conn.lock().unwrap();
+        c.execute("INSERT INTO shift_swaps(id,shift_id,from_worker_id,to_worker_id,reason,status,requested_by,created_at,updated_at) VALUES(?,?,?,?,?,'REQUESTED',?,?,?)",params![i,shift,s.worker_id,to,reason,by,t,t])?;
+        drop(c);
+        self.get_swap(&i)
+    }
+    pub fn approve_shift_swap(&self, i: &str, by: &str) -> Result<ShiftSwap, WorkforceError> {
+        id(by, "approved_by")?;
+        let sw = self.get_swap(i)?;
+        if sw.status != "REQUESTED" {
+            return Err(WorkforceError::Conflict);
+        }
+        let mut c = self.conn.lock().unwrap();
+        let tx = c.transaction()?;
+        tx.execute("UPDATE shift_swaps SET status='APPROVED',approved_by=?,updated_at=? WHERE id=? AND status='REQUESTED'",params![by,now(),i])?;
+        tx.execute(
+            "UPDATE shifts SET worker_id=?,status='SCHEDULED',updated_at=? WHERE id=?",
+            params![sw.to_worker_id, now(), sw.shift_id],
+        )?;
+        tx.commit()?;
+        drop(c);
+        self.get_swap(i)
+    }
+    pub fn get_swap(&self, i: &str) -> Result<ShiftSwap, WorkforceError> {
+        let c = self.conn.lock().unwrap();
+        c.query_row("SELECT id,shift_id,from_worker_id,to_worker_id,reason,status,requested_by,approved_by,created_at,updated_at FROM shift_swaps WHERE id=?",params![i],row_swap).optional()?.ok_or(WorkforceError::NotFound)
+    }
+    pub fn list_swaps(
+        &self,
+        w: Option<&str>,
+        status: Option<&str>,
+        limit: usize,
+    ) -> Result<Vec<ShiftSwap>, WorkforceError> {
+        let c = self.conn.lock().unwrap();
+        let n = limit.clamp(1, 500) as i64;
+        let mut o = Vec::new();
+        let mut s=c.prepare("SELECT id,shift_id,from_worker_id,to_worker_id,reason,status,requested_by,approved_by,created_at,updated_at FROM shift_swaps WHERE (?1 IS NULL OR from_worker_id=?1 OR to_worker_id=?1) AND (?2 IS NULL OR status=?2) ORDER BY created_at DESC LIMIT ?3")?;
+        for r in s.query_map(params![w, status, n], row_swap)? {
+            o.push(r?)
+        }
+        Ok(o)
+    }
+    pub fn set_pay_rate(
+        &self,
+        w: &str,
+        role: &str,
+        ty: &str,
+        rate: i64,
+        currency: &str,
+        effective: i64,
+        by: &str,
+    ) -> Result<PayRate, WorkforceError> {
+        for (v, n) in [
+            (w, "worker_id"),
+            (role, "role"),
+            (currency, "currency"),
+            (by, "created_by"),
+        ] {
+            id(v, n)?
+        }
+        if rate < 0 || !matches!(ty, "DAY" | "NIGHT" | "CUSTOM") {
+            return Err(WorkforceError::Validation("invalid pay rate".into()));
+        }
+        let t = now();
+        let i = Uuid::new_v4().to_string();
+        let c = self.conn.lock().unwrap();
+        c.execute("UPDATE pay_rates SET effective_to=? WHERE worker_id=? AND shift_type=? AND effective_to IS NULL AND effective_from<?",params![effective,w,ty,effective])?;
+        c.execute("INSERT INTO pay_rates(id,worker_id,role,shift_type,rate_minor,currency,effective_from,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?)",params![i,w,role,ty,rate,currency,effective,by,t])?;
+        drop(c);
+        self.get_rate(&i)
+    }
+    pub fn get_rate(&self, i: &str) -> Result<PayRate, WorkforceError> {
+        let c = self.conn.lock().unwrap();
+        c.query_row("SELECT id,worker_id,role,shift_type,rate_minor,currency,effective_from,effective_to,created_by,created_at FROM pay_rates WHERE id=?",params![i],row_rate).optional()?.ok_or(WorkforceError::NotFound)
+    }
+    pub fn rate_at(&self, w: &str, ty: &str, at: i64) -> Result<Option<PayRate>, WorkforceError> {
+        let c = self.conn.lock().unwrap();
+        Ok(c.query_row("SELECT id,worker_id,role,shift_type,rate_minor,currency,effective_from,effective_to,created_by,created_at FROM pay_rates WHERE worker_id=? AND shift_type=? AND effective_from<=? AND (effective_to IS NULL OR effective_to>?) ORDER BY effective_from DESC LIMIT 1",params![w,ty,at,at],row_rate).optional()?)
+    }
+    pub fn create_pay_record(
+        &self,
+        w: &str,
+        ps: i64,
+        pe: i64,
+        h: f64,
+        rate: i64,
+        by: &str,
+    ) -> Result<PayRecord, WorkforceError> {
+        id(w, "worker_id")?;
+        id(by, "created_by")?;
+        if pe <= ps || !h.is_finite() || h < 0.0 || rate < 0 {
+            return Err(WorkforceError::Validation("invalid pay record".into()));
+        }
+        let amt = (h * rate as f64).round() as i64;
+        let t = now();
+        let i = Uuid::new_v4().to_string();
+        let c = self.conn.lock().unwrap();
+        c.execute("INSERT INTO pay_records(id,worker_id,period_start,period_end,hours_worked,rate_minor,amount_minor,currency,status,created_by,created_at,updated_at) VALUES(?,?,?,?,?,?,?,'UGX','DRAFT',?,?,?)",params![i,w,ps,pe,h,rate,amt,by,t,t])?;
+        drop(c);
+        self.get_pay(&i)
+    }
+    pub fn create_shift_pay(
+        &self,
+        w: &str,
+        shift: &str,
+        by: &str,
+    ) -> Result<PayRecord, WorkforceError> {
+        let sh = self.get_shift(shift)?;
+        if sh.worker_id != w {
+            return Err(WorkforceError::Conflict);
+        }
+        let a = self.attendance_overlapping(w, sh.starts_at, sh.ends_at)?;
+        let h = a.iter().map(worked_hours).sum();
+        let r = self
+            .rate_at(w, &sh.shift_type, sh.starts_at)?
+            .ok_or_else(|| WorkforceError::Validation("no effective pay rate".into()))?;
+        self.create_pay_record(w, sh.starts_at, sh.ends_at, h, r.rate_minor, by)
+    }
+    pub fn approve_pay(&self, i: &str) -> Result<PayRecord, WorkforceError> {
+        let c = self.conn.lock().unwrap();
+        let n = c.execute(
+            "UPDATE pay_records SET status='APPROVED',updated_at=? WHERE id=? AND status='DRAFT'",
+            params![now(), i],
+        )?;
+        if n == 0 {
+            return Err(WorkforceError::Conflict);
+        }
+        drop(c);
+        self.get_pay(i)
+    }
+    pub fn mark_pay_paid(&self, i: &str) -> Result<PayRecord, WorkforceError> {
+        let c = self.conn.lock().unwrap();
+        let n = c.execute(
+            "UPDATE pay_records SET status='PAID',updated_at=? WHERE id=? AND status='APPROVED'",
+            params![now(), i],
+        )?;
+        if n == 0 {
+            return Err(WorkforceError::Conflict);
+        }
+        drop(c);
+        self.get_pay(i)
+    }
+    pub fn get_pay(&self, i: &str) -> Result<PayRecord, WorkforceError> {
+        let c = self.conn.lock().unwrap();
+        c.query_row("SELECT id,worker_id,period_start,period_end,hours_worked,rate_minor,amount_minor,currency,status,created_by,created_at,updated_at FROM pay_records WHERE id=?",params![i],row_pay).optional()?.ok_or(WorkforceError::NotFound)
+    }
+    pub fn list_pay(
+        &self,
+        w: Option<&str>,
+        limit: usize,
+    ) -> Result<Vec<PayRecord>, WorkforceError> {
+        let c = self.conn.lock().unwrap();
+        let n = limit.clamp(1, 500) as i64;
+        let mut o = Vec::new();
+        if let Some(w) = w {
+            let mut s=c.prepare("SELECT id,worker_id,period_start,period_end,hours_worked,rate_minor,amount_minor,currency,status,created_by,created_at,updated_at FROM pay_records WHERE worker_id=? ORDER BY period_start DESC LIMIT ?")?;
+            for r in s.query_map(params![w, n], row_pay)? {
+                o.push(r?)
+            }
+        } else {
+            let mut s=c.prepare("SELECT id,worker_id,period_start,period_end,hours_worked,rate_minor,amount_minor,currency,status,created_by,created_at,updated_at FROM pay_records ORDER BY period_start DESC LIMIT ?")?;
+            for r in s.query_map(params![n], row_pay)? {
+                o.push(r?)
+            }
+        }
+        Ok(o)
+    }
+    pub fn add_adjustment(
+        &self,
+        w: &str,
+        pay: Option<&str>,
+        kind: &str,
+        amt: i64,
+        reason: &str,
+        by: &str,
+    ) -> Result<PayrollAdjustment, WorkforceError> {
+        id(w, "worker_id")?;
+        id(kind, "kind")?;
+        id(by, "created_by")?;
+        if amt == 0 || reason.trim().is_empty() {
+            return Err(WorkforceError::Validation("invalid adjustment".into()));
+        }
+        let t = now();
+        let i = Uuid::new_v4().to_string();
+        let c = self.conn.lock().unwrap();
+        c.execute("INSERT INTO payroll_adjustments(id,worker_id,pay_record_id,kind,amount_minor,reason,created_by,created_at) VALUES(?,?,?,?,?,?,?,?)",params![i,w,pay,kind,amt,reason,by,t])?;
+        drop(c);
+        self.get_adjustment(&i)
+    }
+    pub fn get_adjustment(&self, i: &str) -> Result<PayrollAdjustment, WorkforceError> {
+        let c = self.conn.lock().unwrap();
+        c.query_row("SELECT id,worker_id,pay_record_id,kind,amount_minor,reason,created_by,created_at FROM payroll_adjustments WHERE id=?",params![i],row_adj).optional()?.ok_or(WorkforceError::NotFound)
+    }
+    pub fn issue_advance(
+        &self,
+        w: &str,
+        amt: i64,
+        reason: &str,
+        by: &str,
+    ) -> Result<WorkerAdvance, WorkforceError> {
+        id(w, "worker_id")?;
+        id(by, "created_by")?;
+        if amt <= 0 || reason.trim().is_empty() {
+            return Err(WorkforceError::Validation("invalid advance".into()));
+        }
+        let t = now();
+        let i = Uuid::new_v4().to_string();
+        let c = self.conn.lock().unwrap();
+        c.execute("INSERT INTO worker_advances(id,worker_id,amount_minor,currency,reason,status,created_by,created_at) VALUES(?,?,?,'UGX',?,'OUTSTANDING',?,?)",params![i,w,amt,reason,by,t])?;
+        drop(c);
+        self.get_advance(&i)
+    }
+    pub fn get_advance(&self, i: &str) -> Result<WorkerAdvance, WorkforceError> {
+        let c = self.conn.lock().unwrap();
+        c.query_row("SELECT id,worker_id,amount_minor,currency,reason,status,created_by,created_at FROM worker_advances WHERE id=?",params![i],row_adv).optional()?.ok_or(WorkforceError::NotFound)
+    }
+    pub fn record_payment(
+        &self,
+        w: &str,
+        amt: i64,
+        method: &str,
+        refn: Option<&str>,
+        by: &str,
+    ) -> Result<WorkerPayment, WorkforceError> {
+        id(w, "worker_id")?;
+        id(by, "paid_by")?;
+        if amt <= 0 || !matches!(method, "CASH" | "MTN_MOMO" | "AIRTEL_MONEY" | "OTHER") {
+            return Err(WorkforceError::Validation("invalid payment".into()));
+        }
+        let t = now();
+        let i = Uuid::new_v4().to_string();
+        let c = self.conn.lock().unwrap();
+        c.execute("INSERT INTO worker_payments(id,worker_id,amount_minor,currency,payment_method,reference,paid_by,created_at) VALUES(?,?,?,'UGX',?,?,?,?)",params![i,w,amt,method,refn,by,t])?;
+        drop(c);
+        self.get_payment(&i)
+    }
+    pub fn get_payment(&self, i: &str) -> Result<WorkerPayment, WorkforceError> {
+        let c = self.conn.lock().unwrap();
+        c.query_row("SELECT id,worker_id,amount_minor,currency,payment_method,reference,paid_by,created_at FROM worker_payments WHERE id=?",params![i],row_payment).optional()?.ok_or(WorkforceError::NotFound)
+    }
+    pub fn payroll_summary(&self, w: &str) -> Result<PayrollSummary, WorkforceError> {
+        let c = self.conn.lock().unwrap();
+        let g:i64=c.query_row("SELECT COALESCE(SUM(amount_minor),0) FROM pay_records WHERE worker_id=? AND status<>'VOIDED'",params![w],|r|r.get(0))?;
+        let a: i64 = c.query_row(
+            "SELECT COALESCE(SUM(amount_minor),0) FROM payroll_adjustments WHERE worker_id=?",
+            params![w],
+            |r| r.get(0),
+        )?;
+        let v:i64=c.query_row("SELECT COALESCE(SUM(amount_minor),0) FROM worker_advances WHERE worker_id=? AND status='OUTSTANDING'",params![w],|r|r.get(0))?;
+        let p: i64 = c.query_row(
+            "SELECT COALESCE(SUM(amount_minor),0) FROM worker_payments WHERE worker_id=?",
+            params![w],
+            |r| r.get(0),
+        )?;
+        Ok(PayrollSummary {
+            gross_minor: g,
+            adjustments_minor: a,
+            advances_minor: v,
+            paid_minor: p,
+            balance_minor: g + a - v - p,
+        })
+    }
+    fn attendance_overlapping(
+        &self,
+        w: &str,
+        from: i64,
+        to: i64,
+    ) -> Result<Vec<AttendanceRecord>, WorkforceError> {
+        let c = self.conn.lock().unwrap();
+        let mut s=c.prepare("SELECT id,worker_id,device_id,clock_in_at,clock_out_at,break_minutes,status,notes,created_at,updated_at FROM attendance WHERE worker_id=? AND status IN('CLOSED','ADJUSTED') AND clock_out_at IS NOT NULL AND clock_out_at>? AND clock_in_at<?")?;
+        let mut o = Vec::new();
+        for r in s.query_map(params![w, from, to], row_att)? {
+            o.push(r?)
+        }
+        Ok(o)
+    }
+    pub fn hours_in_period(&self, w: &str, from: i64, to: i64) -> Result<f64, WorkforceError> {
+        Ok(self
+            .attendance_overlapping(w, from, to)?
+            .iter()
+            .map(worked_hours)
+            .sum())
+    }
 }
-fn row_att(r:&rusqlite::Row<'_>)->Result<AttendanceRecord,rusqlite::Error>{Ok(AttendanceRecord{id:r.get(0)?,worker_id:r.get(1)?,device_id:r.get(2)?,clock_in_at:r.get(3)?,clock_out_at:r.get(4)?,break_minutes:r.get(5)?,status:match r.get::<_,String>(6)?.as_str(){"OPEN"=>AttendanceStatus::Open,"CLOSED"=>AttendanceStatus::Closed,"ADJUSTED"=>AttendanceStatus::Adjusted,_=>AttendanceStatus::Closed},notes:r.get(7)?,created_at:r.get(8)?,updated_at:r.get(9)?})}
-fn row_av(r:&rusqlite::Row<'_>)->Result<AvailabilityRule,rusqlite::Error>{Ok(AvailabilityRule{id:r.get(0)?,worker_id:r.get(1)?,day_of_week:r.get(2)?,available_from_minute:r.get(3)?,available_to_minute:r.get(4)?,preferred_shift:r.get(5)?,active:r.get::<_,i64>(6)?!=0,valid_from:r.get(7)?,valid_to:r.get(8)?,created_at:r.get(9)?,updated_at:r.get(10)?})}
-fn row_shift(r:&rusqlite::Row<'_>)->Result<Shift,rusqlite::Error>{Ok(Shift{id:r.get(0)?,worker_id:r.get(1)?,role:r.get(2)?,shift_type:r.get(3)?,starts_at:r.get(4)?,ends_at:r.get(5)?,location:r.get(6)?,status:r.get(7)?,created_by:r.get(8)?,created_at:r.get(9)?,updated_at:r.get(10)?})}
-fn row_swap(r:&rusqlite::Row<'_>)->Result<ShiftSwap,rusqlite::Error>{Ok(ShiftSwap{id:r.get(0)?,shift_id:r.get(1)?,from_worker_id:r.get(2)?,to_worker_id:r.get(3)?,reason:r.get(4)?,status:r.get(5)?,requested_by:r.get(6)?,approved_by:r.get(7)?,created_at:r.get(8)?,updated_at:r.get(9)?})}
-fn row_rate(r:&rusqlite::Row<'_>)->Result<PayRate,rusqlite::Error>{Ok(PayRate{id:r.get(0)?,worker_id:r.get(1)?,role:r.get(2)?,shift_type:r.get(3)?,rate_minor:r.get(4)?,currency:r.get(5)?,effective_from:r.get(6)?,effective_to:r.get(7)?,created_by:r.get(8)?,created_at:r.get(9)?})}
-fn row_pay(r:&rusqlite::Row<'_>)->Result<PayRecord,rusqlite::Error>{Ok(PayRecord{id:r.get(0)?,worker_id:r.get(1)?,period_start:r.get(2)?,period_end:r.get(3)?,hours_worked:r.get(4)?,rate_minor:r.get(5)?,amount_minor:r.get(6)?,currency:r.get(7)?,status:r.get(8)?,created_by:r.get(9)?,created_at:r.get(10)?,updated_at:r.get(11)?})}
-fn row_adj(r:&rusqlite::Row<'_>)->Result<PayrollAdjustment,rusqlite::Error>{Ok(PayrollAdjustment{id:r.get(0)?,worker_id:r.get(1)?,pay_record_id:r.get(2)?,kind:r.get(3)?,amount_minor:r.get(4)?,reason:r.get(5)?,created_by:r.get(6)?,created_at:r.get(7)?})}
-fn row_adv(r:&rusqlite::Row<'_>)->Result<WorkerAdvance,rusqlite::Error>{Ok(WorkerAdvance{id:r.get(0)?,worker_id:r.get(1)?,amount_minor:r.get(2)?,currency:r.get(3)?,reason:r.get(4)?,status:r.get(5)?,created_by:r.get(6)?,created_at:r.get(7)?})}
-fn row_payment(r:&rusqlite::Row<'_>)->Result<WorkerPayment,rusqlite::Error>{Ok(WorkerPayment{id:r.get(0)?,worker_id:r.get(1)?,amount_minor:r.get(2)?,currency:r.get(3)?,payment_method:r.get(4)?,reference:r.get(5)?,paid_by:r.get(6)?,created_at:r.get(7)?})}
-fn id(v:&str,n:&str)->Result<(),WorkforceError>{if v.trim().is_empty()||v.len()>128{Err(WorkforceError::Validation(format!("invalid {n}")))}else{Ok(())}}
-fn worked_hours(a:&AttendanceRecord)->f64{a.clock_out_at.map(|o|(((o-a.clock_in_at).max(0)-(a.break_minutes.max(0)*60)).max(0) as f64)/3600.0).unwrap_or(0.0)}
-fn now()->i64{SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs() as i64}
+fn row_att(r: &rusqlite::Row<'_>) -> Result<AttendanceRecord, rusqlite::Error> {
+    Ok(AttendanceRecord {
+        id: r.get(0)?,
+        worker_id: r.get(1)?,
+        device_id: r.get(2)?,
+        clock_in_at: r.get(3)?,
+        clock_out_at: r.get(4)?,
+        break_minutes: r.get(5)?,
+        status: match r.get::<_, String>(6)?.as_str() {
+            "OPEN" => AttendanceStatus::Open,
+            "CLOSED" => AttendanceStatus::Closed,
+            "ADJUSTED" => AttendanceStatus::Adjusted,
+            _ => AttendanceStatus::Closed,
+        },
+        notes: r.get(7)?,
+        created_at: r.get(8)?,
+        updated_at: r.get(9)?,
+    })
+}
+fn row_av(r: &rusqlite::Row<'_>) -> Result<AvailabilityRule, rusqlite::Error> {
+    Ok(AvailabilityRule {
+        id: r.get(0)?,
+        worker_id: r.get(1)?,
+        day_of_week: r.get(2)?,
+        available_from_minute: r.get(3)?,
+        available_to_minute: r.get(4)?,
+        preferred_shift: r.get(5)?,
+        active: r.get::<_, i64>(6)? != 0,
+        valid_from: r.get(7)?,
+        valid_to: r.get(8)?,
+        created_at: r.get(9)?,
+        updated_at: r.get(10)?,
+    })
+}
+fn row_shift(r: &rusqlite::Row<'_>) -> Result<Shift, rusqlite::Error> {
+    Ok(Shift {
+        id: r.get(0)?,
+        worker_id: r.get(1)?,
+        role: r.get(2)?,
+        shift_type: r.get(3)?,
+        starts_at: r.get(4)?,
+        ends_at: r.get(5)?,
+        location: r.get(6)?,
+        status: r.get(7)?,
+        created_by: r.get(8)?,
+        created_at: r.get(9)?,
+        updated_at: r.get(10)?,
+    })
+}
+fn row_swap(r: &rusqlite::Row<'_>) -> Result<ShiftSwap, rusqlite::Error> {
+    Ok(ShiftSwap {
+        id: r.get(0)?,
+        shift_id: r.get(1)?,
+        from_worker_id: r.get(2)?,
+        to_worker_id: r.get(3)?,
+        reason: r.get(4)?,
+        status: r.get(5)?,
+        requested_by: r.get(6)?,
+        approved_by: r.get(7)?,
+        created_at: r.get(8)?,
+        updated_at: r.get(9)?,
+    })
+}
+fn row_rate(r: &rusqlite::Row<'_>) -> Result<PayRate, rusqlite::Error> {
+    Ok(PayRate {
+        id: r.get(0)?,
+        worker_id: r.get(1)?,
+        role: r.get(2)?,
+        shift_type: r.get(3)?,
+        rate_minor: r.get(4)?,
+        currency: r.get(5)?,
+        effective_from: r.get(6)?,
+        effective_to: r.get(7)?,
+        created_by: r.get(8)?,
+        created_at: r.get(9)?,
+    })
+}
+fn row_pay(r: &rusqlite::Row<'_>) -> Result<PayRecord, rusqlite::Error> {
+    Ok(PayRecord {
+        id: r.get(0)?,
+        worker_id: r.get(1)?,
+        period_start: r.get(2)?,
+        period_end: r.get(3)?,
+        hours_worked: r.get(4)?,
+        rate_minor: r.get(5)?,
+        amount_minor: r.get(6)?,
+        currency: r.get(7)?,
+        status: r.get(8)?,
+        created_by: r.get(9)?,
+        created_at: r.get(10)?,
+        updated_at: r.get(11)?,
+    })
+}
+fn row_adj(r: &rusqlite::Row<'_>) -> Result<PayrollAdjustment, rusqlite::Error> {
+    Ok(PayrollAdjustment {
+        id: r.get(0)?,
+        worker_id: r.get(1)?,
+        pay_record_id: r.get(2)?,
+        kind: r.get(3)?,
+        amount_minor: r.get(4)?,
+        reason: r.get(5)?,
+        created_by: r.get(6)?,
+        created_at: r.get(7)?,
+    })
+}
+fn row_adv(r: &rusqlite::Row<'_>) -> Result<WorkerAdvance, rusqlite::Error> {
+    Ok(WorkerAdvance {
+        id: r.get(0)?,
+        worker_id: r.get(1)?,
+        amount_minor: r.get(2)?,
+        currency: r.get(3)?,
+        reason: r.get(4)?,
+        status: r.get(5)?,
+        created_by: r.get(6)?,
+        created_at: r.get(7)?,
+    })
+}
+fn row_payment(r: &rusqlite::Row<'_>) -> Result<WorkerPayment, rusqlite::Error> {
+    Ok(WorkerPayment {
+        id: r.get(0)?,
+        worker_id: r.get(1)?,
+        amount_minor: r.get(2)?,
+        currency: r.get(3)?,
+        payment_method: r.get(4)?,
+        reference: r.get(5)?,
+        paid_by: r.get(6)?,
+        created_at: r.get(7)?,
+    })
+}
+fn id(v: &str, n: &str) -> Result<(), WorkforceError> {
+    if v.trim().is_empty() || v.len() > 128 {
+        Err(WorkforceError::Validation(format!("invalid {n}")))
+    } else {
+        Ok(())
+    }
+}
+fn worked_hours(a: &AttendanceRecord) -> f64 {
+    a.clock_out_at
+        .map(|o| {
+            (((o - a.clock_in_at).max(0) - (a.break_minutes.max(0) * 60)).max(0) as f64) / 3600.0
+        })
+        .unwrap_or(0.0)
+}
+fn now() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs() as i64
+}
 
-#[cfg(test)] mod tests { use super::*;
- #[test] fn attendance(){let s=WorkforceStore::open_in_memory().unwrap();assert!(s.clock_out("w",0,None).is_err());s.clock_in("w","d",None).unwrap();assert!(s.clock_in("w","d",None).is_err());let a=s.clock_out("w",15,None).unwrap();assert_eq!(a.status,AttendanceStatus::Closed);}
- #[test] fn scheduling_and_swap(){let s=WorkforceStore::open_in_memory().unwrap();s.set_availability("w",1,480,1260,Some("DAY"),1,None,"ceo").unwrap();let sh=s.create_shift_typed("w","WAITER","DAY",100,200,"Najjera II Central Market","ceo").unwrap();let sw=s.request_shift_swap(&sh.id,"w2","w",Some("cover")).unwrap();s.approve_shift_swap(&sw.id,"ceo").unwrap();assert_eq!(s.get_shift(&sh.id).unwrap().worker_id,"w2");}
- #[test] fn rates_payments_and_balance(){let s=WorkforceStore::open_in_memory().unwrap();s.set_pay_rate("w","WAITER","DAY",20000,"UGX",1,"ceo").unwrap();let p=s.create_pay_record("w",1,2,2.0,20000,"ceo").unwrap();s.approve_pay(&p.id).unwrap();s.issue_advance("w",5000,"advance","ceo").unwrap();s.record_payment("w",10000,"CASH",None,"ceo").unwrap();assert_eq!(s.payroll_summary("w").unwrap().balance_minor,25000);}
- #[test] fn invalid_inputs(){let s=WorkforceStore::open_in_memory().unwrap();assert!(s.create_shift("", "WAITER",1,2,"x","ceo").is_err());assert!(s.set_availability("w",7,0,1,None,1,None,"ceo").is_err());}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn attendance() {
+        let s = WorkforceStore::open_in_memory().unwrap();
+        assert!(s.clock_out("w", 0, None).is_err());
+        s.clock_in("w", "d", None).unwrap();
+        assert!(s.clock_in("w", "d", None).is_err());
+        let a = s.clock_out("w", 15, None).unwrap();
+        assert_eq!(a.status, AttendanceStatus::Closed);
+    }
+    #[test]
+    fn scheduling_and_swap() {
+        let s = WorkforceStore::open_in_memory().unwrap();
+        s.set_availability("w", 1, 480, 1260, Some("DAY"), 1, None, "ceo")
+            .unwrap();
+        let sh = s
+            .create_shift_typed(
+                "w",
+                "WAITER",
+                "DAY",
+                100,
+                200,
+                "Najjera II Central Market",
+                "ceo",
+            )
+            .unwrap();
+        let sw = s
+            .request_shift_swap(&sh.id, "w2", "w", Some("cover"))
+            .unwrap();
+        s.approve_shift_swap(&sw.id, "ceo").unwrap();
+        assert_eq!(s.get_shift(&sh.id).unwrap().worker_id, "w2");
+    }
+    #[test]
+    fn rates_payments_and_balance() {
+        let s = WorkforceStore::open_in_memory().unwrap();
+        s.set_pay_rate("w", "WAITER", "DAY", 20000, "UGX", 1, "ceo")
+            .unwrap();
+        let p = s.create_pay_record("w", 1, 2, 2.0, 20000, "ceo").unwrap();
+        s.approve_pay(&p.id).unwrap();
+        s.issue_advance("w", 5000, "advance", "ceo").unwrap();
+        s.record_payment("w", 10000, "CASH", None, "ceo").unwrap();
+        assert_eq!(s.payroll_summary("w").unwrap().balance_minor, 25000);
+    }
+    #[test]
+    fn invalid_inputs() {
+        let s = WorkforceStore::open_in_memory().unwrap();
+        assert!(s.create_shift("", "WAITER", 1, 2, "x", "ceo").is_err());
+        assert!(s
+            .set_availability("w", 7, 0, 1, None, 1, None, "ceo")
+            .is_err());
+    }
 }
