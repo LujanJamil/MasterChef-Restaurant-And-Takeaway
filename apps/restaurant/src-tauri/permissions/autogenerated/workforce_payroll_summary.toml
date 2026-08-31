@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-workforce-payroll-summary"
+description = "Enables the workforce_payroll_summary command without any pre-configured scope."
+commands.allow = ["workforce_payroll_summary"]
+
+[[permission]]
+identifier = "deny-workforce-payroll-summary"
+description = "Denies the workforce_payroll_summary command without any pre-configured scope."
+commands.deny = ["workforce_payroll_summary"]

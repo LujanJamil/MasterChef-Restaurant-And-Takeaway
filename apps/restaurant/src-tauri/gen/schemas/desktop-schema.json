@@ -189,6 +189,114 @@
           "markdownDescription": "Enables the current_user command without any pre-configured scope."
         },
         {
+          "description": "Enables the delivery_assign command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-delivery-assign",
+          "markdownDescription": "Enables the delivery_assign command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the delivery_cancel command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-delivery-cancel",
+          "markdownDescription": "Enables the delivery_cancel command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the delivery_deliver command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-delivery-deliver",
+          "markdownDescription": "Enables the delivery_deliver command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the delivery_list command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-delivery-list",
+          "markdownDescription": "Enables the delivery_list command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the delivery_pickup command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-delivery-pickup",
+          "markdownDescription": "Enables the delivery_pickup command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the delivery_reconcile command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-delivery-reconcile",
+          "markdownDescription": "Enables the delivery_reconcile command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the inv_approve_expense command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-inv-approve-expense",
+          "markdownDescription": "Enables the inv_approve_expense command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the inv_count_stock command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-inv-count-stock",
+          "markdownDescription": "Enables the inv_count_stock command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the inv_counts command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-inv-counts",
+          "markdownDescription": "Enables the inv_counts command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the inv_create_expense command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-inv-create-expense",
+          "markdownDescription": "Enables the inv_create_expense command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the inv_expenses command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-inv-expenses",
+          "markdownDescription": "Enables the inv_expenses command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the inv_items command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-inv-items",
+          "markdownDescription": "Enables the inv_items command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the inv_levels command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-inv-levels",
+          "markdownDescription": "Enables the inv_levels command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the inv_record_movement command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-inv-record-movement",
+          "markdownDescription": "Enables the inv_record_movement command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the inv_reject_expense command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-inv-reject-expense",
+          "markdownDescription": "Enables the inv_reject_expense command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the inv_suppliers command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-inv-suppliers",
+          "markdownDescription": "Enables the inv_suppliers command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the inv_upsert_item command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-inv-upsert-item",
+          "markdownDescription": "Enables the inv_upsert_item command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the inv_upsert_supplier command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-inv-upsert-supplier",
+          "markdownDescription": "Enables the inv_upsert_supplier command without any pre-configured scope."
+        },
+        {
           "description": "Enables the login command without any pre-configured scope.",
           "type": "string",
           "const": "allow-login",
@@ -199,6 +307,252 @@
           "type": "string",
           "const": "allow-logout",
           "markdownDescription": "Enables the logout command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the menu_categories command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-menu-categories",
+          "markdownDescription": "Enables the menu_categories command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the menu_create_category command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-menu-create-category",
+          "markdownDescription": "Enables the menu_create_category command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the menu_create_item command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-menu-create-item",
+          "markdownDescription": "Enables the menu_create_item command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the menu_create_table command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-menu-create-table",
+          "markdownDescription": "Enables the menu_create_table command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the menu_items command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-menu-items",
+          "markdownDescription": "Enables the menu_items command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the order_add_item command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-order-add-item",
+          "markdownDescription": "Enables the order_add_item command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the order_cancel_item command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-order-cancel-item",
+          "markdownDescription": "Enables the order_cancel_item command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the order_create command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-order-create",
+          "markdownDescription": "Enables the order_create command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the order_discount command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-order-discount",
+          "markdownDescription": "Enables the order_discount command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the order_events command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-order-events",
+          "markdownDescription": "Enables the order_events command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the order_get command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-order-get",
+          "markdownDescription": "Enables the order_get command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the order_items command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-order-items",
+          "markdownDescription": "Enables the order_items command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the order_list command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-order-list",
+          "markdownDescription": "Enables the order_list command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the order_transition command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-order-transition",
+          "markdownDescription": "Enables the order_transition command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the restaurant_tables command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-restaurant-tables",
+          "markdownDescription": "Enables the restaurant_tables command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the sync_ack command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-sync-ack",
+          "markdownDescription": "Enables the sync_ack command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the sync_claim command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-sync-claim",
+          "markdownDescription": "Enables the sync_claim command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the sync_due command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-sync-due",
+          "markdownDescription": "Enables the sync_due command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the sync_enqueue command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-sync-enqueue",
+          "markdownDescription": "Enables the sync_enqueue command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the sync_fail command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-sync-fail",
+          "markdownDescription": "Enables the sync_fail command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the sync_pending_count command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-sync-pending-count",
+          "markdownDescription": "Enables the sync_pending_count command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the users_list command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-users-list",
+          "markdownDescription": "Enables the users_list command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the workforce_add_adjustment command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-workforce-add-adjustment",
+          "markdownDescription": "Enables the workforce_add_adjustment command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the workforce_approve_pay command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-workforce-approve-pay",
+          "markdownDescription": "Enables the workforce_approve_pay command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the workforce_approve_swap command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-workforce-approve-swap",
+          "markdownDescription": "Enables the workforce_approve_swap command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the workforce_clock_in command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-workforce-clock-in",
+          "markdownDescription": "Enables the workforce_clock_in command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the workforce_clock_out command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-workforce-clock-out",
+          "markdownDescription": "Enables the workforce_clock_out command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the workforce_create_shift command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-workforce-create-shift",
+          "markdownDescription": "Enables the workforce_create_shift command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the workforce_create_shift_pay command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-workforce-create-shift-pay",
+          "markdownDescription": "Enables the workforce_create_shift_pay command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the workforce_issue_advance command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-workforce-issue-advance",
+          "markdownDescription": "Enables the workforce_issue_advance command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the workforce_list_attendance command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-workforce-list-attendance",
+          "markdownDescription": "Enables the workforce_list_attendance command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the workforce_list_pay command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-workforce-list-pay",
+          "markdownDescription": "Enables the workforce_list_pay command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the workforce_list_shifts command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-workforce-list-shifts",
+          "markdownDescription": "Enables the workforce_list_shifts command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the workforce_list_shifts_admin command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-workforce-list-shifts-admin",
+          "markdownDescription": "Enables the workforce_list_shifts_admin command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the workforce_list_swaps command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-workforce-list-swaps",
+          "markdownDescription": "Enables the workforce_list_swaps command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the workforce_mark_paid command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-workforce-mark-paid",
+          "markdownDescription": "Enables the workforce_mark_paid command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the workforce_open_attendance command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-workforce-open-attendance",
+          "markdownDescription": "Enables the workforce_open_attendance command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the workforce_payroll_summary command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-workforce-payroll-summary",
+          "markdownDescription": "Enables the workforce_payroll_summary command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the workforce_record_payment command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-workforce-record-payment",
+          "markdownDescription": "Enables the workforce_record_payment command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the workforce_request_swap command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-workforce-request-swap",
+          "markdownDescription": "Enables the workforce_request_swap command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the workforce_set_pay_rate command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-workforce-set-pay-rate",
+          "markdownDescription": "Enables the workforce_set_pay_rate command without any pre-configured scope."
         },
         {
           "description": "Denies the bootstrap_ceo command without any pre-configured scope.",
@@ -213,6 +567,114 @@
           "markdownDescription": "Denies the current_user command without any pre-configured scope."
         },
         {
+          "description": "Denies the delivery_assign command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-delivery-assign",
+          "markdownDescription": "Denies the delivery_assign command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the delivery_cancel command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-delivery-cancel",
+          "markdownDescription": "Denies the delivery_cancel command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the delivery_deliver command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-delivery-deliver",
+          "markdownDescription": "Denies the delivery_deliver command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the delivery_list command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-delivery-list",
+          "markdownDescription": "Denies the delivery_list command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the delivery_pickup command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-delivery-pickup",
+          "markdownDescription": "Denies the delivery_pickup command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the delivery_reconcile command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-delivery-reconcile",
+          "markdownDescription": "Denies the delivery_reconcile command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the inv_approve_expense command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-inv-approve-expense",
+          "markdownDescription": "Denies the inv_approve_expense command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the inv_count_stock command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-inv-count-stock",
+          "markdownDescription": "Denies the inv_count_stock command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the inv_counts command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-inv-counts",
+          "markdownDescription": "Denies the inv_counts command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the inv_create_expense command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-inv-create-expense",
+          "markdownDescription": "Denies the inv_create_expense command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the inv_expenses command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-inv-expenses",
+          "markdownDescription": "Denies the inv_expenses command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the inv_items command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-inv-items",
+          "markdownDescription": "Denies the inv_items command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the inv_levels command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-inv-levels",
+          "markdownDescription": "Denies the inv_levels command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the inv_record_movement command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-inv-record-movement",
+          "markdownDescription": "Denies the inv_record_movement command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the inv_reject_expense command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-inv-reject-expense",
+          "markdownDescription": "Denies the inv_reject_expense command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the inv_suppliers command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-inv-suppliers",
+          "markdownDescription": "Denies the inv_suppliers command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the inv_upsert_item command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-inv-upsert-item",
+          "markdownDescription": "Denies the inv_upsert_item command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the inv_upsert_supplier command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-inv-upsert-supplier",
+          "markdownDescription": "Denies the inv_upsert_supplier command without any pre-configured scope."
+        },
+        {
           "description": "Denies the login command without any pre-configured scope.",
           "type": "string",
           "const": "deny-login",
@@ -223,6 +685,252 @@
           "type": "string",
           "const": "deny-logout",
           "markdownDescription": "Denies the logout command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the menu_categories command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-menu-categories",
+          "markdownDescription": "Denies the menu_categories command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the menu_create_category command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-menu-create-category",
+          "markdownDescription": "Denies the menu_create_category command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the menu_create_item command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-menu-create-item",
+          "markdownDescription": "Denies the menu_create_item command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the menu_create_table command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-menu-create-table",
+          "markdownDescription": "Denies the menu_create_table command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the menu_items command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-menu-items",
+          "markdownDescription": "Denies the menu_items command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the order_add_item command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-order-add-item",
+          "markdownDescription": "Denies the order_add_item command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the order_cancel_item command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-order-cancel-item",
+          "markdownDescription": "Denies the order_cancel_item command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the order_create command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-order-create",
+          "markdownDescription": "Denies the order_create command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the order_discount command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-order-discount",
+          "markdownDescription": "Denies the order_discount command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the order_events command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-order-events",
+          "markdownDescription": "Denies the order_events command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the order_get command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-order-get",
+          "markdownDescription": "Denies the order_get command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the order_items command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-order-items",
+          "markdownDescription": "Denies the order_items command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the order_list command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-order-list",
+          "markdownDescription": "Denies the order_list command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the order_transition command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-order-transition",
+          "markdownDescription": "Denies the order_transition command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the restaurant_tables command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-restaurant-tables",
+          "markdownDescription": "Denies the restaurant_tables command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the sync_ack command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-sync-ack",
+          "markdownDescription": "Denies the sync_ack command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the sync_claim command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-sync-claim",
+          "markdownDescription": "Denies the sync_claim command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the sync_due command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-sync-due",
+          "markdownDescription": "Denies the sync_due command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the sync_enqueue command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-sync-enqueue",
+          "markdownDescription": "Denies the sync_enqueue command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the sync_fail command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-sync-fail",
+          "markdownDescription": "Denies the sync_fail command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the sync_pending_count command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-sync-pending-count",
+          "markdownDescription": "Denies the sync_pending_count command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the users_list command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-users-list",
+          "markdownDescription": "Denies the users_list command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the workforce_add_adjustment command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-workforce-add-adjustment",
+          "markdownDescription": "Denies the workforce_add_adjustment command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the workforce_approve_pay command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-workforce-approve-pay",
+          "markdownDescription": "Denies the workforce_approve_pay command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the workforce_approve_swap command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-workforce-approve-swap",
+          "markdownDescription": "Denies the workforce_approve_swap command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the workforce_clock_in command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-workforce-clock-in",
+          "markdownDescription": "Denies the workforce_clock_in command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the workforce_clock_out command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-workforce-clock-out",
+          "markdownDescription": "Denies the workforce_clock_out command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the workforce_create_shift command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-workforce-create-shift",
+          "markdownDescription": "Denies the workforce_create_shift command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the workforce_create_shift_pay command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-workforce-create-shift-pay",
+          "markdownDescription": "Denies the workforce_create_shift_pay command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the workforce_issue_advance command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-workforce-issue-advance",
+          "markdownDescription": "Denies the workforce_issue_advance command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the workforce_list_attendance command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-workforce-list-attendance",
+          "markdownDescription": "Denies the workforce_list_attendance command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the workforce_list_pay command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-workforce-list-pay",
+          "markdownDescription": "Denies the workforce_list_pay command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the workforce_list_shifts command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-workforce-list-shifts",
+          "markdownDescription": "Denies the workforce_list_shifts command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the workforce_list_shifts_admin command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-workforce-list-shifts-admin",
+          "markdownDescription": "Denies the workforce_list_shifts_admin command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the workforce_list_swaps command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-workforce-list-swaps",
+          "markdownDescription": "Denies the workforce_list_swaps command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the workforce_mark_paid command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-workforce-mark-paid",
+          "markdownDescription": "Denies the workforce_mark_paid command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the workforce_open_attendance command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-workforce-open-attendance",
+          "markdownDescription": "Denies the workforce_open_attendance command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the workforce_payroll_summary command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-workforce-payroll-summary",
+          "markdownDescription": "Denies the workforce_payroll_summary command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the workforce_record_payment command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-workforce-record-payment",
+          "markdownDescription": "Denies the workforce_record_payment command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the workforce_request_swap command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-workforce-request-swap",
+          "markdownDescription": "Denies the workforce_request_swap command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the workforce_set_pay_rate command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-workforce-set-pay-rate",
+          "markdownDescription": "Denies the workforce_set_pay_rate command without any pre-configured scope."
         },
         {
           "description": "Default core plugins set.\n#### This default permission set includes:\n\n- `core:path:default`\n- `core:event:default`\n- `core:window:default`\n- `core:webview:default`\n- `core:app:default`\n- `core:image:default`\n- `core:resources:default`\n- `core:menu:default`\n- `core:tray:default`",

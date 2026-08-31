@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-workforce-clock-in"
+description = "Enables the workforce_clock_in command without any pre-configured scope."
+commands.allow = ["workforce_clock_in"]
+
+[[permission]]
+identifier = "deny-workforce-clock-in"
+description = "Denies the workforce_clock_in command without any pre-configured scope."
+commands.deny = ["workforce_clock_in"]

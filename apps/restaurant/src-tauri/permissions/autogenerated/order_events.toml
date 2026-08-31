@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-order-events"
+description = "Enables the order_events command without any pre-configured scope."
+commands.allow = ["order_events"]
+
+[[permission]]
+identifier = "deny-order-events"
+description = "Denies the order_events command without any pre-configured scope."
+commands.deny = ["order_events"]

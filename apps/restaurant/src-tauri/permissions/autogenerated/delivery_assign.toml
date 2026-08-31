@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-delivery-assign"
+description = "Enables the delivery_assign command without any pre-configured scope."
+commands.allow = ["delivery_assign"]
+
+[[permission]]
+identifier = "deny-delivery-assign"
+description = "Denies the delivery_assign command without any pre-configured scope."
+commands.deny = ["delivery_assign"]

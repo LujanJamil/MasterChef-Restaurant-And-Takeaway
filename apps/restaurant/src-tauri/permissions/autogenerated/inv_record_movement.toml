@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-inv-record-movement"
+description = "Enables the inv_record_movement command without any pre-configured scope."
+commands.allow = ["inv_record_movement"]
+
+[[permission]]
+identifier = "deny-inv-record-movement"
+description = "Denies the inv_record_movement command without any pre-configured scope."
+commands.deny = ["inv_record_movement"]

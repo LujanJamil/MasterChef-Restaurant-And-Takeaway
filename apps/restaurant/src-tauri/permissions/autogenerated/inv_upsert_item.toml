@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-inv-upsert-item"
+description = "Enables the inv_upsert_item command without any pre-configured scope."
+commands.allow = ["inv_upsert_item"]
+
+[[permission]]
+identifier = "deny-inv-upsert-item"
+description = "Denies the inv_upsert_item command without any pre-configured scope."
+commands.deny = ["inv_upsert_item"]

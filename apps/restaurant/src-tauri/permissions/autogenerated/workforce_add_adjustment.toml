@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-workforce-add-adjustment"
+description = "Enables the workforce_add_adjustment command without any pre-configured scope."
+commands.allow = ["workforce_add_adjustment"]
+
+[[permission]]
+identifier = "deny-workforce-add-adjustment"
+description = "Denies the workforce_add_adjustment command without any pre-configured scope."
+commands.deny = ["workforce_add_adjustment"]

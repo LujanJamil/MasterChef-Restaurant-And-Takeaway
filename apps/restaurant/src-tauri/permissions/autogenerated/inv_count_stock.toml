@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-inv-count-stock"
+description = "Enables the inv_count_stock command without any pre-configured scope."
+commands.allow = ["inv_count_stock"]
+
+[[permission]]
+identifier = "deny-inv-count-stock"
+description = "Denies the inv_count_stock command without any pre-configured scope."
+commands.deny = ["inv_count_stock"]

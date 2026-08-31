@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-delivery-reconcile"
+description = "Enables the delivery_reconcile command without any pre-configured scope."
+commands.allow = ["delivery_reconcile"]
+
+[[permission]]
+identifier = "deny-delivery-reconcile"
+description = "Denies the delivery_reconcile command without any pre-configured scope."
+commands.deny = ["delivery_reconcile"]

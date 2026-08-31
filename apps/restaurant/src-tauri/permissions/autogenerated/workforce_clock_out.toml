@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-workforce-clock-out"
+description = "Enables the workforce_clock_out command without any pre-configured scope."
+commands.allow = ["workforce_clock_out"]
+
+[[permission]]
+identifier = "deny-workforce-clock-out"
+description = "Denies the workforce_clock_out command without any pre-configured scope."
+commands.deny = ["workforce_clock_out"]

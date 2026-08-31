@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-workforce-list-shifts-admin"
+description = "Enables the workforce_list_shifts_admin command without any pre-configured scope."
+commands.allow = ["workforce_list_shifts_admin"]
+
+[[permission]]
+identifier = "deny-workforce-list-shifts-admin"
+description = "Denies the workforce_list_shifts_admin command without any pre-configured scope."
+commands.deny = ["workforce_list_shifts_admin"]

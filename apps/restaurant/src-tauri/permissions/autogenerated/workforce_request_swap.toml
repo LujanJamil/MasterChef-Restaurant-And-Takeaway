@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-workforce-request-swap"
+description = "Enables the workforce_request_swap command without any pre-configured scope."
+commands.allow = ["workforce_request_swap"]
+
+[[permission]]
+identifier = "deny-workforce-request-swap"
+description = "Denies the workforce_request_swap command without any pre-configured scope."
+commands.deny = ["workforce_request_swap"]

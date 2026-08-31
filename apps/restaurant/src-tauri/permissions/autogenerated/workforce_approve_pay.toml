@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-workforce-approve-pay"
+description = "Enables the workforce_approve_pay command without any pre-configured scope."
+commands.allow = ["workforce_approve_pay"]
+
+[[permission]]
+identifier = "deny-workforce-approve-pay"
+description = "Denies the workforce_approve_pay command without any pre-configured scope."
+commands.deny = ["workforce_approve_pay"]

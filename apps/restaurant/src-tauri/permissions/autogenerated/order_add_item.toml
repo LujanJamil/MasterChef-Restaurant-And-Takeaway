@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-order-add-item"
+description = "Enables the order_add_item command without any pre-configured scope."
+commands.allow = ["order_add_item"]
+
+[[permission]]
+identifier = "deny-order-add-item"
+description = "Denies the order_add_item command without any pre-configured scope."
+commands.deny = ["order_add_item"]

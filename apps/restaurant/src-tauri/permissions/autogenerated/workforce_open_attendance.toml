@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-workforce-open-attendance"
+description = "Enables the workforce_open_attendance command without any pre-configured scope."
+commands.allow = ["workforce_open_attendance"]
+
+[[permission]]
+identifier = "deny-workforce-open-attendance"
+description = "Denies the workforce_open_attendance command without any pre-configured scope."
+commands.deny = ["workforce_open_attendance"]

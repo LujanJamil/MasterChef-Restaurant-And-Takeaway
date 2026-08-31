@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-workforce-mark-paid"
+description = "Enables the workforce_mark_paid command without any pre-configured scope."
+commands.allow = ["workforce_mark_paid"]
+
+[[permission]]
+identifier = "deny-workforce-mark-paid"
+description = "Denies the workforce_mark_paid command without any pre-configured scope."
+commands.deny = ["workforce_mark_paid"]

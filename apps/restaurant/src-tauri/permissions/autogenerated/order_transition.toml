@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-order-transition"
+description = "Enables the order_transition command without any pre-configured scope."
+commands.allow = ["order_transition"]
+
+[[permission]]
+identifier = "deny-order-transition"
+description = "Denies the order_transition command without any pre-configured scope."
+commands.deny = ["order_transition"]

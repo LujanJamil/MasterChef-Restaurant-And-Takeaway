@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-order-list"
+description = "Enables the order_list command without any pre-configured scope."
+commands.allow = ["order_list"]
+
+[[permission]]
+identifier = "deny-order-list"
+description = "Denies the order_list command without any pre-configured scope."
+commands.deny = ["order_list"]

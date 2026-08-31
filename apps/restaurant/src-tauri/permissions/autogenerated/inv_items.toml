@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-inv-items"
+description = "Enables the inv_items command without any pre-configured scope."
+commands.allow = ["inv_items"]
+
+[[permission]]
+identifier = "deny-inv-items"
+description = "Denies the inv_items command without any pre-configured scope."
+commands.deny = ["inv_items"]

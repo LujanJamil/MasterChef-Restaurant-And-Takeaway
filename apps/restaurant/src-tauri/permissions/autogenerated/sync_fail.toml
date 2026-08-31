@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-sync-fail"
+description = "Enables the sync_fail command without any pre-configured scope."
+commands.allow = ["sync_fail"]
+
+[[permission]]
+identifier = "deny-sync-fail"
+description = "Denies the sync_fail command without any pre-configured scope."
+commands.deny = ["sync_fail"]

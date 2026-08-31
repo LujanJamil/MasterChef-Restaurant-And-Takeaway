@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-workforce-record-payment"
+description = "Enables the workforce_record_payment command without any pre-configured scope."
+commands.allow = ["workforce_record_payment"]
+
+[[permission]]
+identifier = "deny-workforce-record-payment"
+description = "Denies the workforce_record_payment command without any pre-configured scope."
+commands.deny = ["workforce_record_payment"]

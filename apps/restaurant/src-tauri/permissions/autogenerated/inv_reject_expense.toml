@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-inv-reject-expense"
+description = "Enables the inv_reject_expense command without any pre-configured scope."
+commands.allow = ["inv_reject_expense"]
+
+[[permission]]
+identifier = "deny-inv-reject-expense"
+description = "Denies the inv_reject_expense command without any pre-configured scope."
+commands.deny = ["inv_reject_expense"]

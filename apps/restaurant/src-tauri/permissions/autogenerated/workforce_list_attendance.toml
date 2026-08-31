@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-workforce-list-attendance"
+description = "Enables the workforce_list_attendance command without any pre-configured scope."
+commands.allow = ["workforce_list_attendance"]
+
+[[permission]]
+identifier = "deny-workforce-list-attendance"
+description = "Denies the workforce_list_attendance command without any pre-configured scope."
+commands.deny = ["workforce_list_attendance"]

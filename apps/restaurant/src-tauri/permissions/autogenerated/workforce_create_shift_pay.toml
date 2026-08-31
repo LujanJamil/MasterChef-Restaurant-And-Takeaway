@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-workforce-create-shift-pay"
+description = "Enables the workforce_create_shift_pay command without any pre-configured scope."
+commands.allow = ["workforce_create_shift_pay"]
+
+[[permission]]
+identifier = "deny-workforce-create-shift-pay"
+description = "Denies the workforce_create_shift_pay command without any pre-configured scope."
+commands.deny = ["workforce_create_shift_pay"]
