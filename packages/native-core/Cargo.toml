@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 argon2 = "0.5.3"
-base64 = "0.22"
+base64 = "0.23"
 rand = "0.8"
 rusqlite = { version = "0.37", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
