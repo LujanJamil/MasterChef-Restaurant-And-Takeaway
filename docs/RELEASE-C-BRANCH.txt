@@ -1,0 +1,1 @@
+Release C is the delivery, CEO command-center and production-hardening integration line. Runtime verification is mandatory before production sign-off.
