@@ -71,7 +71,12 @@ fn bootstrap_ceo(
 ) -> Result<UserSummary, String> {
     state
         .auth
-        .bootstrap_ceo(&username, &display_name, &password, &state.device_id)
+        .bootstrap_ceo(
+            &username,
+            &display_name,
+            &password,
+            &state.inner().device_id,
+        )
         .map_err(err)
 }
 
@@ -83,18 +88,22 @@ fn login(
 ) -> Result<AuthSession, String> {
     state
         .auth
-        .login(&username, &password, &state.device_id)
+        .login(&username, &password, &state.inner().device_id)
         .map_err(err)
 }
 
 #[tauri::command]
 fn logout(state: State<'_, AppState>, token: String) -> Result<(), String> {
-    state.auth.logout(&token, &state.device_id).map_err(err)
+    state
+        .inner()
+        .auth
+        .logout(&token, &state.inner().device_id)
+        .map_err(err)
 }
 
 #[tauri::command]
 fn current_user(state: State<'_, AppState>, token: String) -> Result<UserSummary, String> {
-    state.auth.authenticate(&token).map_err(err)
+    state.inner().auth.authenticate(&token).map_err(err)
 }
 
 fn require(state: &AppState, token: &str, p: &str) -> Result<UserSummary, String> {
@@ -153,11 +162,11 @@ fn sync_enqueue(
     operation: String,
     payload: Value,
 ) -> Result<SyncOperation, String> {
-    state.auth.authenticate(&token).map_err(err)?;
+    state.inner().auth.authenticate(&token).map_err(err)?;
     state
         .sync
         .enqueue(
-            &state.device_id,
+            &state.inner().device_id,
             &entity_type,
             &entity_id,
             &operation,
@@ -172,8 +181,8 @@ fn sync_due(
     token: String,
     limit: usize,
 ) -> Result<Vec<SyncOperation>, String> {
-    state.auth.authenticate(&token).map_err(err)?;
-    state.sync.due_batch(now(), limit).map_err(err)
+    state.inner().auth.authenticate(&token).map_err(err)?;
+    state.inner().sync.due_batch(now(), limit).map_err(err)
 }
 
 #[tauri::command]
@@ -182,14 +191,14 @@ fn sync_claim(
     token: String,
     ids: Vec<String>,
 ) -> Result<usize, String> {
-    state.auth.authenticate(&token).map_err(err)?;
-    state.sync.claim(&ids).map_err(err)
+    state.inner().auth.authenticate(&token).map_err(err)?;
+    state.inner().sync.claim(&ids).map_err(err)
 }
 
 #[tauri::command]
 fn sync_ack(state: State<'_, AppState>, token: String, id: String) -> Result<(), String> {
-    state.auth.authenticate(&token).map_err(err)?;
-    state.sync.ack(&id).map_err(err)
+    state.inner().auth.authenticate(&token).map_err(err)?;
+    state.inner().sync.ack(&id).map_err(err)
 }
 
 #[tauri::command]
@@ -199,14 +208,14 @@ fn sync_fail(
     id: String,
     error: String,
 ) -> Result<(), String> {
-    state.auth.authenticate(&token).map_err(err)?;
-    state.sync.fail(&id, &error).map_err(err)
+    state.inner().auth.authenticate(&token).map_err(err)?;
+    state.inner().sync.fail(&id, &error).map_err(err)
 }
 
 #[tauri::command]
 fn sync_pending_count(state: State<'_, AppState>, token: String) -> Result<i64, String> {
-    state.auth.authenticate(&token).map_err(err)?;
-    state.sync.pending_count().map_err(err)
+    state.inner().auth.authenticate(&token).map_err(err)?;
+    state.inner().sync.pending_count().map_err(err)
 }
 
 #[tauri::command]
@@ -218,7 +227,7 @@ fn workforce_clock_in(
     let u = require(&state, &token, "attendance.manage")?;
     let r = state
         .workforce
-        .clock_in(&u.id, &state.device_id, notes.as_deref())
+        .clock_in(&u.id, &state.inner().device_id, notes.as_deref())
         .map_err(err)?;
     let w = enqueue(&state, "ATTENDANCE", &r.id, "CREATE", &r);
     finish(&state, r, w)
@@ -245,8 +254,8 @@ fn workforce_open_attendance(
     state: State<'_, AppState>,
     token: String,
 ) -> Result<Option<AttendanceRecord>, String> {
-    let u = state.auth.authenticate(&token).map_err(err)?;
-    state.workforce.open_attendance(&u.id).map_err(err)
+    let u = state.inner().auth.authenticate(&token).map_err(err)?;
+    state.inner().workforce.open_attendance(&u.id).map_err(err)
 }
 
 #[tauri::command]
@@ -255,7 +264,7 @@ fn workforce_list_attendance(
     token: String,
     limit: Option<usize>,
 ) -> Result<Vec<AttendanceRecord>, String> {
-    let u = state.auth.authenticate(&token).map_err(err)?;
+    let u = state.inner().auth.authenticate(&token).map_err(err)?;
     state
         .workforce
         .list_attendance(Some(&u.id), limit.unwrap_or(50))
@@ -270,7 +279,7 @@ fn workforce_list_shifts(
     to: i64,
     limit: Option<usize>,
 ) -> Result<Vec<Shift>, String> {
-    let u = state.auth.authenticate(&token).map_err(err)?;
+    let u = state.inner().auth.authenticate(&token).map_err(err)?;
     state
         .workforce
         .list_shifts(Some(&u.id), from, to, limit.unwrap_or(50))
@@ -279,7 +288,7 @@ fn workforce_list_shifts(
 
 #[tauri::command]
 fn users_list(state: State<'_, AppState>, token: String) -> Result<Vec<UserSummary>, String> {
-    state.auth.list_users(&token).map_err(err)
+    state.inner().auth.list_users(&token).map_err(err)
 }
 
 #[tauri::command]
@@ -334,7 +343,7 @@ fn workforce_list_swaps(
     status: Option<String>,
     limit: Option<usize>,
 ) -> Result<Vec<ShiftSwap>, String> {
-    let u = state.auth.authenticate(&token).map_err(err)?;
+    let u = state.inner().auth.authenticate(&token).map_err(err)?;
     let all = state
         .auth
         .has_permission(&token, "attendance.view")
@@ -354,7 +363,7 @@ fn workforce_request_swap(
     to_worker_id: String,
     reason: Option<String>,
 ) -> Result<ShiftSwap, String> {
-    let u = state.auth.authenticate(&token).map_err(err)?;
+    let u = state.inner().auth.authenticate(&token).map_err(err)?;
     let r = state
         .workforce
         .request_shift_swap(&shift_id, &to_worker_id, &u.id, reason.as_deref())
@@ -412,7 +421,7 @@ fn workforce_list_pay(
     worker_id: Option<String>,
     limit: Option<usize>,
 ) -> Result<Vec<PayRecord>, String> {
-    let u = state.auth.authenticate(&token).map_err(err)?;
+    let u = state.inner().auth.authenticate(&token).map_err(err)?;
     let all = state
         .auth
         .has_permission(&token, "pay.view")
@@ -447,7 +456,7 @@ fn workforce_approve_pay(
     pay_id: String,
 ) -> Result<PayRecord, String> {
     require(&state, &token, "pay.manage")?;
-    let r = state.workforce.approve_pay(&pay_id).map_err(err)?;
+    let r = state.inner().workforce.approve_pay(&pay_id).map_err(err)?;
     let w = enqueue(&state, "PAY_RECORD", &r.id, "UPDATE", &r);
     finish(&state, r, w)
 }
@@ -459,7 +468,11 @@ fn workforce_mark_paid(
     pay_id: String,
 ) -> Result<PayRecord, String> {
     require(&state, &token, "pay.manage")?;
-    let r = state.workforce.mark_pay_paid(&pay_id).map_err(err)?;
+    let r = state
+        .inner()
+        .workforce
+        .mark_pay_paid(&pay_id)
+        .map_err(err)?;
     let w = enqueue(&state, "PAY_RECORD", &r.id, "UPDATE", &r);
     finish(&state, r, w)
 }
@@ -537,7 +550,7 @@ fn workforce_payroll_summary(
     token: String,
     worker_id: Option<String>,
 ) -> Result<PayrollSummary, String> {
-    let u = state.auth.authenticate(&token).map_err(err)?;
+    let u = state.inner().auth.authenticate(&token).map_err(err)?;
     let all = state
         .auth
         .has_permission(&token, "pay.view")
@@ -547,7 +560,7 @@ fn workforce_payroll_summary(
     } else {
         u.id
     };
-    state.workforce.payroll_summary(&w).map_err(err)
+    state.inner().workforce.payroll_summary(&w).map_err(err)
 }
 
 fn require_role(state: &AppState, token: &str, roles: &[&str]) -> Result<UserSummary, String> {
@@ -580,7 +593,7 @@ fn inv_upsert_item(
 #[tauri::command]
 fn inv_items(state: State<'_, AppState>, token: String) -> Result<Vec<Item>, String> {
     require(&state, &token, "inventory.view")?;
-    state.inv.list_items(true).map_err(err)
+    state.inner().inv.list_items(true).map_err(err)
 }
 
 #[tauri::command]
@@ -590,7 +603,11 @@ fn inv_levels(
     location: Option<String>,
 ) -> Result<Vec<StockLevel>, String> {
     require(&state, &token, "inventory.view")?;
-    state.inv.stock_levels(location.as_deref()).map_err(err)
+    state
+        .inner()
+        .inv
+        .stock_levels(location.as_deref())
+        .map_err(err)
 }
 
 #[tauri::command]
@@ -613,7 +630,7 @@ fn inv_upsert_supplier(
 #[tauri::command]
 fn inv_suppliers(state: State<'_, AppState>, token: String) -> Result<Vec<Supplier>, String> {
     require(&state, &token, "inventory.view")?;
-    state.inv.list_suppliers().map_err(err)
+    state.inner().inv.list_suppliers().map_err(err)
 }
 
 #[tauri::command]
@@ -645,7 +662,7 @@ fn inv_record_movement(
             supplier_id.as_deref(),
             reason.as_deref(),
             &u.id,
-            &state.device_id,
+            &state.inner().device_id,
         )
         .map_err(err)?;
     let w = enqueue(&state, "STOCK_MOVEMENT", &r.id, "CREATE", &r);
@@ -663,7 +680,13 @@ fn inv_count_stock(
     let u = require(&state, &token, "inventory.adjust")?;
     let r = state
         .inv
-        .count_stock(&item_id, &location, counted, &u.id, &state.device_id)
+        .count_stock(
+            &item_id,
+            &location,
+            counted,
+            &u.id,
+            &state.inner().device_id,
+        )
         .map_err(err)?;
     let w = enqueue(&state, "STOCK_COUNT", &r.id, "CREATE", &r);
     finish(&state, r, w)
@@ -676,7 +699,11 @@ fn inv_counts(
     limit: Option<usize>,
 ) -> Result<Vec<StockCount>, String> {
     require(&state, &token, "inventory.view")?;
-    state.inv.list_counts(limit.unwrap_or(50)).map_err(err)
+    state
+        .inner()
+        .inv
+        .list_counts(limit.unwrap_or(50))
+        .map_err(err)
 }
 
 #[tauri::command]
@@ -689,7 +716,7 @@ fn inv_create_expense(
     description: String,
     reference: Option<String>,
 ) -> Result<Expense, String> {
-    let u = state.auth.authenticate(&token).map_err(err)?;
+    let u = state.inner().auth.authenticate(&token).map_err(err)?;
     let r = state
         .inv
         .create_expense(
@@ -712,7 +739,11 @@ fn inv_approve_expense(
     expense_id: String,
 ) -> Result<Expense, String> {
     let u = require_role(&state, &token, &["CEO", "MANAGER"])?;
-    let r = state.inv.approve_expense(&expense_id, &u.id).map_err(err)?;
+    let r = state
+        .inner()
+        .inv
+        .approve_expense(&expense_id, &u.id)
+        .map_err(err)?;
     let w = enqueue(&state, "EXPENSE", &r.id, "UPDATE", &r);
     finish(&state, r, w)
 }
@@ -724,7 +755,11 @@ fn inv_reject_expense(
     expense_id: String,
 ) -> Result<Expense, String> {
     let u = require_role(&state, &token, &["CEO", "MANAGER"])?;
-    let r = state.inv.reject_expense(&expense_id, &u.id).map_err(err)?;
+    let r = state
+        .inner()
+        .inv
+        .reject_expense(&expense_id, &u.id)
+        .map_err(err)?;
     let w = enqueue(&state, "EXPENSE", &r.id, "UPDATE", &r);
     finish(&state, r, w)
 }
@@ -736,7 +771,7 @@ fn inv_expenses(
     status: Option<String>,
     limit: Option<usize>,
 ) -> Result<Vec<Expense>, String> {
-    state.auth.authenticate(&token).map_err(err)?;
+    state.inner().auth.authenticate(&token).map_err(err)?;
     state
         .inv
         .list_expenses(status.as_deref(), limit.unwrap_or(100))
@@ -763,7 +798,7 @@ fn delivery_assign(
             &rider_id,
             notes.as_deref(),
             &u.id,
-            &state.device_id,
+            &state.inner().device_id,
         )
         .map_err(err)?;
     let w = enqueue(&state, "DELIVERY", &r.id, "CREATE", &r);
@@ -776,8 +811,8 @@ fn delivery_pickup(
     token: String,
     delivery_id: String,
 ) -> Result<Delivery, String> {
-    let u = state.auth.authenticate(&token).map_err(err)?;
-    let r = state.del.pickup(&delivery_id, &u.id).map_err(err)?;
+    let u = state.inner().auth.authenticate(&token).map_err(err)?;
+    let r = state.inner().del.pickup(&delivery_id, &u.id).map_err(err)?;
     let w = enqueue(&state, "DELIVERY", &r.id, "UPDATE", &r);
     finish(&state, r, w)
 }
@@ -789,7 +824,7 @@ fn delivery_deliver(
     delivery_id: String,
     collected_minor: i64,
 ) -> Result<Delivery, String> {
-    let u = state.auth.authenticate(&token).map_err(err)?;
+    let u = state.inner().auth.authenticate(&token).map_err(err)?;
     let r = state
         .del
         .deliver(&delivery_id, &u.id, collected_minor)
@@ -821,7 +856,7 @@ fn delivery_cancel(
     delivery_id: String,
 ) -> Result<Delivery, String> {
     require(&state, &token, "delivery.manage")?;
-    let r = state.del.cancel(&delivery_id).map_err(err)?;
+    let r = state.inner().del.cancel(&delivery_id).map_err(err)?;
     let w = enqueue(&state, "DELIVERY", &r.id, "UPDATE", &r);
     finish(&state, r, w)
 }
@@ -834,7 +869,7 @@ fn delivery_list(
     status: Option<String>,
     limit: Option<usize>,
 ) -> Result<Vec<Delivery>, String> {
-    let u = state.auth.authenticate(&token).map_err(err)?;
+    let u = state.inner().auth.authenticate(&token).map_err(err)?;
     let all = state
         .auth
         .has_permission(&token, "delivery.manage")
@@ -852,7 +887,7 @@ fn delivery_reconciliation(
     token: String,
     rider_id: Option<String>,
 ) -> Result<RiderReconciliation, String> {
-    let u = state.auth.authenticate(&token).map_err(err)?;
+    let u = state.inner().auth.authenticate(&token).map_err(err)?;
     let all = state
         .auth
         .has_permission(&token, "delivery.manage")
@@ -862,13 +897,13 @@ fn delivery_reconciliation(
     } else {
         u.id
     };
-    state.del.reconciliation(&rid).map_err(err)
+    state.inner().del.reconciliation(&rid).map_err(err)
 }
 
 #[tauri::command]
 fn menu_categories(state: State<'_, AppState>, token: String) -> Result<Vec<Category>, String> {
-    state.auth.authenticate(&token).map_err(err)?;
-    state.orders.list_categories().map_err(err)
+    state.inner().auth.authenticate(&token).map_err(err)?;
+    state.inner().orders.list_categories().map_err(err)
 }
 
 #[tauri::command]
@@ -877,14 +912,18 @@ fn menu_items(
     token: String,
     category_id: Option<String>,
 ) -> Result<Vec<MenuItem>, String> {
-    state.auth.authenticate(&token).map_err(err)?;
-    state.orders.list_menu(category_id.as_deref()).map_err(err)
+    state.inner().auth.authenticate(&token).map_err(err)?;
+    state
+        .inner()
+        .orders
+        .list_menu(category_id.as_deref())
+        .map_err(err)
 }
 
 #[tauri::command]
 fn restaurant_tables(state: State<'_, AppState>, token: String) -> Result<Vec<Table>, String> {
-    state.auth.authenticate(&token).map_err(err)?;
-    state.orders.list_tables().map_err(err)
+    state.inner().auth.authenticate(&token).map_err(err)?;
+    state.inner().orders.list_tables().map_err(err)
 }
 
 #[tauri::command]
@@ -946,7 +985,11 @@ fn menu_create_table(
     name: String,
 ) -> Result<Table, String> {
     require(&state, &token, "system.manage")?;
-    let r = state.orders.create_table(&name, now()).map_err(err)?;
+    let r = state
+        .inner()
+        .orders
+        .create_table(&name, now())
+        .map_err(err)?;
     let w = enqueue(&state, "RESTAURANT_TABLE", &r.id, "CREATE", &r);
     finish(&state, r, w)
 }
@@ -1004,11 +1047,11 @@ fn order_add_item(
     // item insert has already committed, so enqueue failures are surfaced
     // without discarding the local change.
     let w1 = enqueue(&state, "ORDER_ITEM", &r.id, "CREATE", &r);
-    let order = state.orders.get_order(&order_id).map_err(err)?;
+    let order = state.inner().orders.get_order(&order_id).map_err(err)?;
     let w2 = enqueue(&state, "ORDER", &order.id, "UPDATE", &order);
     for warning in [w1, w2].into_iter().flatten() {
         eprintln!("{warning}");
-        let _ = state.app.emit("sync-warning", warning);
+        let _ = state.inner().app.emit("sync-warning", warning);
     }
     Ok(r)
 }
@@ -1044,7 +1087,7 @@ fn order_cancel_item(
     let w2 = enqueue(&state, "ORDER", &order.id, "UPDATE", &order);
     for warning in [w1, w2].into_iter().flatten() {
         eprintln!("{warning}");
-        let _ = state.app.emit("sync-warning", warning);
+        let _ = state.inner().app.emit("sync-warning", warning);
     }
     Ok(())
 }
@@ -1090,8 +1133,8 @@ fn order_transition(
 
 #[tauri::command]
 fn order_get(state: State<'_, AppState>, token: String, order_id: String) -> Result<Order, String> {
-    state.auth.authenticate(&token).map_err(err)?;
-    state.orders.get_order(&order_id).map_err(err)
+    state.inner().auth.authenticate(&token).map_err(err)?;
+    state.inner().orders.get_order(&order_id).map_err(err)
 }
 
 #[tauri::command]
@@ -1100,8 +1143,12 @@ fn order_list(
     token: String,
     limit: Option<usize>,
 ) -> Result<Vec<Order>, String> {
-    state.auth.authenticate(&token).map_err(err)?;
-    state.orders.list_orders(limit.unwrap_or(50)).map_err(err)
+    state.inner().auth.authenticate(&token).map_err(err)?;
+    state
+        .inner()
+        .orders
+        .list_orders(limit.unwrap_or(50))
+        .map_err(err)
 }
 
 #[tauri::command]
@@ -1110,8 +1157,8 @@ fn order_items(
     token: String,
     order_id: String,
 ) -> Result<Vec<OrderItem>, String> {
-    state.auth.authenticate(&token).map_err(err)?;
-    state.orders.list_items(&order_id).map_err(err)
+    state.inner().auth.authenticate(&token).map_err(err)?;
+    state.inner().orders.list_items(&order_id).map_err(err)
 }
 
 #[tauri::command]
@@ -1121,7 +1168,7 @@ fn order_events(
     order_id: String,
 ) -> Result<Vec<OrderEvent>, String> {
     require(&state, &token, "audit.view")?;
-    state.orders.list_events(&order_id).map_err(err)
+    state.inner().orders.list_events(&order_id).map_err(err)
 }
 
 fn main() {
