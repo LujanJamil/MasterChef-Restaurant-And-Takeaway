@@ -12,6 +12,10 @@ masterchef-native-core = { path = "../../../packages/native-core" }
 masterchef-sync-core = { path = "../../../packages/sync-core" }
 masterchef-workforce-core = { path = "../../../packages/workforce-core" }
 masterchef-orders-core = { path = "../../../packages/orders-core" }
+<<<<<<< HEAD
+=======
+masterchef-inventory-store = { path = "../../../packages/inventory-store" }
+>>>>>>> c04e40f12226b5924f5dc826d1729f2e6f814588
 masterchef-delivery-core = { path = "../../../packages/delivery-core" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

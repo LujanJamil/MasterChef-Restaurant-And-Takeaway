@@ -1,1 +1,1 @@
-{"root":["./src/app.tsx","./src/main.tsx"],"version":"5.9.3"}
+{"root":["./src/App.tsx","./src/main.tsx","./src/components/CashierPanel.tsx","./src/components/KitchenPanel.tsx","./src/components/OperationsPanel.tsx","./src/components/ReleaseBOperations.tsx","./src/components/WorkforcePanel.tsx"],"version":"5.9.3"}
