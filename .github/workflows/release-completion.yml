@@ -1,0 +1,60 @@
+name: MasterChef Release Completion Gate
+
+on:
+  push:
+    branches: [release-b-inventory-operations, main]
+  pull_request:
+    branches: [release-b-inventory-operations, main]
+
+jobs:
+  typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm build
+
+  rust:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        manifest:
+          - packages/native-core/Cargo.toml
+          - packages/orders-core/Cargo.toml
+          - packages/sync-core/Cargo.toml
+          - packages/workforce-core/Cargo.toml
+          - packages/delivery-core/Cargo.toml
+          - apps/restaurant/src-tauri/Cargo.toml
+          - apps/ceo/src-tauri/Cargo.toml
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --manifest-path ${{ matrix.manifest }} -- --check
+      - run: cargo test --manifest-path ${{ matrix.manifest }}
+      - run: cargo check --manifest-path ${{ matrix.manifest }}
+
+  dependency-security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --audit-level high
