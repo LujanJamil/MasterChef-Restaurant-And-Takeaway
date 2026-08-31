@@ -5,10 +5,14 @@
   "scripts": {
     "dev:ceo": "pnpm --filter @masterchef/ceo tauri dev",
     "dev:restaurant": "pnpm --filter @masterchef/restaurant tauri dev",
-    "build": "pnpm -r build",
-    "typecheck": "pnpm -r typecheck",
-    "lint": "pnpm -r lint",
-    "test": "pnpm -r test"
+    "build": "pnpm --workspace-concurrency=1 -r build",
+    "typecheck": "pnpm --workspace-concurrency=1 -r typecheck",
+    "lint": "pnpm --workspace-concurrency=1 -r lint",
+    "test": "pnpm --workspace-concurrency=1 -r test",
+    "verify:v1": "pnpm install --frozen-lockfile && pnpm typecheck && pnpm lint && pnpm test && pnpm build",
+    "verify:rust": "cargo check --manifest-path apps/restaurant/src-tauri/Cargo.toml && cargo test --manifest-path packages/delivery-core/Cargo.toml && cargo test --manifest-path packages/orders-core/Cargo.toml && cargo test --manifest-path packages/workforce-core/Cargo.toml && cargo test --manifest-path packages/sync-core/Cargo.toml",
+    "backup": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/backup-masterchef.ps1",
+    "restore": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/restore-masterchef.ps1"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.4",
