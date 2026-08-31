@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -374,7 +373,6 @@ mod tests {
             .is_ok());
     }
 }
-=======
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -415,4 +413,3 @@ impl DeliveryStore {
 impl OperationGuard{pub fn accept(&mut self,operation_id:Uuid)->Result<(),DeliveryError>{if !self.seen.insert(operation_id){return Err(DeliveryError::DuplicateOperation)}Ok(())}}
 
 #[cfg(test)] mod tests{use super::*;#[test]fn lifecycle(){let r=Uuid::new_v4();let mut d=Delivery::new(Uuid::new_v4(),"Najjera II Central Market".into(),15000,1).unwrap();d.assign(r,2).unwrap();d.pickup(3).unwrap();d.dispatch(4).unwrap();d.collect(CollectionMethod::Cash,15000,5).unwrap();d.deliver("proof-1".into(),6).unwrap();assert_eq!(d.status,DeliveryStatus::Delivered)}#[test]fn duplicate(){let mut g=OperationGuard::default();let id=Uuid::new_v4();assert!(g.accept(id).is_ok());assert_eq!(g.accept(id),Err(DeliveryError::DuplicateOperation))}#[test]fn illegal(){let mut d=Delivery::new(Uuid::new_v4(),"address".into(),1,1).unwrap();assert_eq!(d.dispatch(2),Err(DeliveryError::InvalidTransition))}#[test]fn persists(){let path=std::env::temp_dir().join(format!("mc-delivery-{}.sqlite",Uuid::new_v4()));let s=DeliveryStore::open(&path).unwrap();let d=Delivery::new(Uuid::new_v4(),"address".into(),10,1).unwrap();s.save(&d).unwrap();assert_eq!(s.get(&d.id).unwrap().unwrap().id,d.id);drop(s);let _=std::fs::remove_file(path);}}
->>>>>>> 5d59475e7da3c1908fe2952d8be9490c0d63069c
