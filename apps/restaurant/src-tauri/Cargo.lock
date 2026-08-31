@@ -1847,6 +1847,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "masterchef-delivery-core"
+version = "0.1.0"
+dependencies = [
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.20",
+ "uuid",
+]
+
+[[package]]
+name = "masterchef-inventory-store"
+version = "0.1.0"
+dependencies = [
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.20",
+ "uuid",
+]
+
+[[package]]
 name = "masterchef-native-core"
 version = "0.1.0"
 dependencies = [
@@ -1876,6 +1898,8 @@ dependencies = [
 name = "masterchef-restaurant"
 version = "0.1.0"
 dependencies = [
+ "masterchef-delivery-core",
+ "masterchef-inventory-store",
  "masterchef-native-core",
  "masterchef-orders-core",
  "masterchef-sync-core",
